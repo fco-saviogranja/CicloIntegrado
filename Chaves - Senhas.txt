@@ -1,1 +1,19 @@
 https://console.cloud.google.com/apis/credentials
+
+IDENTIFICAÇÃO DO GIT: chave SSH - permite seu computador se autenticar no GitHub sem precisar de senha.
+Your identification has been saved in C:\Users\Francisco/.ssh/id_ed25519
+Your public key has been saved in C:\Users\Francisco/.ssh/id_ed25519.pub
+The key fingerprint is:
+SHA256:6+J14wJwlk/AGLpZNEA89V77pNDPA4UywMqlnRMbdhA ciclointegrado@gmail.com
+The key's randomart image is:
++--[ED25519 256]--+
+| oo+E*           |
+|  ooB++  .       |
+| ..B.*+oo .      |
+|  ++*.+=.o       |
+|  o  =ooS .      |
+|      ...O       |
+|       .+ B      |
+|      .o.o o     |
+|     ......      |
++----[SHA256]-----+
