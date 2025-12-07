@@ -1343,4 +1343,13 @@ app.get('/admin/reports/municipality-stats', authenticateToken, isAdminMaster, a
 // EXPORTAR
 // ============================================
 
-module.exports = app;
+// Para Cloud Functions
+exports.cicloIntegradoAPI = app;
+
+// Para desenvolvimento local
+if (require.main === module) {
+  const PORT = process.env.PORT || 8080;
+  app.listen(PORT, () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
+  });
+}
