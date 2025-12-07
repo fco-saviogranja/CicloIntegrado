@@ -1,0 +1,459 @@
+{
+	"info": {
+		"name": "Ciclo Integrado - Admin Master API",
+		"description": "Endpoints para gerenciar municípios, usuários, receita e relatórios",
+		"version": "1.0.0"
+	},
+	"item": [
+		{
+			"name": "Autenticação",
+			"item": [
+				{
+					"name": "Login (Admin Master)",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "http://localhost:8080/auth/login",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["auth", "login"]
+						},
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"seu-email@ciclo-integrado.com\",\n  \"password\": \"sua-senha-aqui\"\n}"
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Municípios (Admin Master)",
+			"item": [
+				{
+					"name": "Listar todos os municípios",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/admin/municipalities",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["admin", "municipalities"]
+						},
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer seu-token-jwt-aqui"
+							}
+						]
+					}
+				},
+				{
+					"name": "Criar município",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "http://localhost:8080/admin/municipalities",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["admin", "municipalities"]
+						},
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer seu-token-jwt-aqui"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"municipio_id\": \"novo-municipio\",\n  \"municipio_nome\": \"Prefeitura de Nova Cidade\",\n  \"estado\": \"SP\",\n  \"cep\": \"12345-678\",\n  \"admin_email\": \"admin@novacidade.gov.br\",\n  \"admin_name\": \"Admin Name\",\n  \"license_type\": \"profissional\",\n  \"max_users\": 50,\n  \"max_contracts\": 500\n}"
+						}
+					}
+				},
+				{
+					"name": "Obter detalhes do município",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/admin/municipalities/sao-paulo",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["admin", "municipalities", "sao-paulo"]
+						},
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer seu-token-jwt-aqui"
+							}
+						]
+					}
+				},
+				{
+					"name": "Atualizar município",
+					"request": {
+						"method": "PUT",
+						"url": {
+							"raw": "http://localhost:8080/admin/municipalities/sao-paulo",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["admin", "municipalities", "sao-paulo"]
+						},
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer seu-token-jwt-aqui"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"license_type\": \"premium\",\n  \"max_users\": 100\n}"
+						}
+					}
+				},
+				{
+					"name": "Deletar município",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "http://localhost:8080/admin/municipalities/novo-municipio",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["admin", "municipalities", "novo-municipio"]
+						},
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer seu-token-jwt-aqui"
+							}
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Usuários (Admin Master)",
+			"item": [
+				{
+					"name": "Listar usuários (com filtros)",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/admin/users?role=admin_municipio&status=active",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["admin", "users"],
+							"query": [
+								{
+									"key": "role",
+									"value": "admin_municipio"
+								},
+								{
+									"key": "status",
+									"value": "active"
+								}
+							]
+						},
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer seu-token-jwt-aqui"
+							}
+						]
+					}
+				},
+				{
+					"name": "Criar usuário",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "http://localhost:8080/admin/users",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["admin", "users"]
+						},
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer seu-token-jwt-aqui"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"novo-usuario@municipio.gov.br\",\n  \"password\": \"SenhaForte123!\",\n  \"name\": \"Nome do Usuário\",\n  \"role\": \"gestor_contrato\",\n  \"municipio_id\": \"sao-paulo\",\n  \"municipio_nome\": \"Prefeitura de São Paulo\",\n  \"phone\": \"(11) 9999-9999\",\n  \"cpf\": \"123.456.789-00\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Obter detalhes do usuário",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/admin/users/user-id",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["admin", "users", "user-id"]
+						},
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer seu-token-jwt-aqui"
+							}
+						]
+					}
+				},
+				{
+					"name": "Atualizar usuário",
+					"request": {
+						"method": "PUT",
+						"url": {
+							"raw": "http://localhost:8080/admin/users/user-id",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["admin", "users", "user-id"]
+						},
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer seu-token-jwt-aqui"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"name\": \"Novo Nome\",\n  \"role\": \"admin_municipio\",\n  \"status\": \"active\"\n}"
+						}
+					}
+				},
+				{
+					"name": "Deletar usuário",
+					"request": {
+						"method": "DELETE",
+						"url": {
+							"raw": "http://localhost:8080/admin/users/user-id",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["admin", "users", "user-id"]
+						},
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer seu-token-jwt-aqui"
+							}
+						]
+					}
+				},
+				{
+					"name": "Estatísticas de usuários",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/admin/users/statistics",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["admin", "users", "statistics"]
+						},
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer seu-token-jwt-aqui"
+							}
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Receita e Faturamento",
+			"item": [
+				{
+					"name": "Obter dados de receita",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/admin/revenue?period=12months",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["admin", "revenue"],
+							"query": [
+								{
+									"key": "period",
+									"value": "12months"
+								}
+							]
+						},
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer seu-token-jwt-aqui"
+							}
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Relatórios",
+			"item": [
+				{
+					"name": "Licenças vencendo em breve",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/admin/reports/expiring-licenses?days=30",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["admin", "reports", "expiring-licenses"],
+							"query": [
+								{
+									"key": "days",
+									"value": "30"
+								}
+							]
+						},
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer seu-token-jwt-aqui"
+							}
+						]
+					}
+				},
+				{
+					"name": "Estatísticas por município",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/admin/reports/municipality-stats",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["admin", "reports", "municipality-stats"]
+						},
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer seu-token-jwt-aqui"
+							}
+						]
+					}
+				}
+			]
+		},
+		{
+			"name": "Dashboard (Admin Master)",
+			"item": [
+				{
+					"name": "Obter dados do dashboard",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/admin/dashboard",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["admin", "dashboard"]
+						},
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer seu-token-jwt-aqui"
+							}
+						]
+					}
+				},
+				{
+					"name": "Resetar senha de usuário",
+					"request": {
+						"method": "POST",
+						"url": {
+							"raw": "http://localhost:8080/admin/reset-password/user-id",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["admin", "reset-password", "user-id"]
+						},
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer seu-token-jwt-aqui"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"new_password\": \"NovaSenha123!\"\n}"
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "Sistema",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/health",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["health"]
+						}
+					}
+				},
+				{
+					"name": "Status da API",
+					"request": {
+						"method": "GET",
+						"url": {
+							"raw": "http://localhost:8080/status",
+							"protocol": "http",
+							"host": ["localhost"],
+							"port": "8080",
+							"path": ["status"]
+						}
+					}
+				}
+			]
+		}
+	]
+}

@@ -751,6 +751,41 @@ app.put('/admin/municipalities/:municipio_id', authenticateToken, isAdminMaster,
 });
 
 /**
+ * DELETE /admin/municipalities/:municipio_id
+ * Deletar município (apenas proprietário)
+ */
+app.delete('/admin/municipalities/:municipio_id', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const { municipio_id } = req.params;
+
+    // Verificar se existem usuários associados
+    const usersSnapshot = await db.collection('users')
+      .where('municipio_id', '==', municipio_id)
+      .get();
+
+    if (!usersSnapshot.empty) {
+      return res.status(400).json({
+        error: {
+          code: 'HAS_USERS',
+          message: 'Não é possível deletar um município que possui usuários. Primeiro delete os usuários.'
+        }
+      });
+    }
+
+    await db.collection('municipalities').doc(municipio_id).delete();
+
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: 'DELETE_ERROR',
+        message: 'Erro ao deletar município'
+      }
+    });
+  }
+});
+
+/**
  * GET /admin/dashboard
  * Dashboard completo para proprietário
  */
@@ -834,6 +869,471 @@ app.post('/admin/reset-password/:user_id', authenticateToken, isAdminMaster, asy
       error: {
         code: 'UPDATE_ERROR',
         message: 'Erro ao resetar senha'
+      }
+    });
+  }
+});
+
+// ============================================
+// ROTAS - GERENCIAMENTO DE USUÁRIOS (ADMIN MASTER)
+// ============================================
+
+/**
+ * GET /admin/users
+ * Listar todos os usuários com filtros (apenas proprietário)
+ */
+app.get('/admin/users', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const { role, municipio_id, status } = req.query;
+    let query = db.collection('users');
+
+    if (role) {
+      query = query.where('role', '==', role);
+    }
+    if (municipio_id) {
+      query = query.where('municipio_id', '==', municipio_id);
+    }
+    if (status) {
+      query = query.where('status', '==', status);
+    }
+
+    const snapshot = await query.orderBy('created_at', 'desc').get();
+
+    const usuarios = snapshot.docs.map(doc => {
+      const data = doc.data();
+      delete data.password;
+      return {
+        id: doc.id,
+        ...data
+      };
+    });
+
+    res.json({
+      total: usuarios.length,
+      usuarios: usuarios
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: 'LIST_ERROR',
+        message: 'Erro ao listar usuários'
+      }
+    });
+  }
+});
+
+/**
+ * POST /admin/users
+ * Criar novo usuário com role específico (apenas proprietário)
+ */
+app.post('/admin/users', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const {
+      email,
+      password,
+      name,
+      role,
+      municipio_id,
+      municipio_nome,
+      phone,
+      cpf
+    } = req.body;
+
+    // Validações
+    if (!email || !password || !name || !role) {
+      return res.status(400).json({
+        error: {
+          code: 'MISSING_FIELDS',
+          message: 'Campos obrigatórios: email, password, name, role'
+        }
+      });
+    }
+
+    // Validar role
+    const validRoles = ['admin_master', 'admin_municipio', 'gestor_contrato', 'fiscal_contrato'];
+    if (!validRoles.includes(role)) {
+      return res.status(400).json({
+        error: {
+          code: 'INVALID_ROLE',
+          message: `Role inválida. Roles válidos: ${validRoles.join(', ')}`
+        }
+      });
+    }
+
+    // Se não é admin_master, municipio_id é obrigatório
+    if (role !== 'admin_master' && !municipio_id) {
+      return res.status(400).json({
+        error: {
+          code: 'MISSING_FIELDS',
+          message: 'municipio_id é obrigatório para usuários não-master'
+        }
+      });
+    }
+
+    // Verificar se email já existe
+    const existingUser = await db.collection('users')
+      .where('email', '==', email)
+      .get();
+
+    if (!existingUser.empty) {
+      return res.status(409).json({
+        error: {
+          code: 'EMAIL_EXISTS',
+          message: 'Email já cadastrado no sistema'
+        }
+      });
+    }
+
+    const novoUsuario = {
+      email,
+      password,
+      name,
+      role,
+      municipio_id: role === 'admin_master' ? null : municipio_id,
+      municipio_nome: role === 'admin_master' ? null : municipio_nome,
+      phone: phone || '',
+      cpf: cpf || '',
+      status: 'active',
+      created_at: new Date().toISOString(),
+      created_by: req.user.email,
+      last_login: null
+    };
+
+    const docRef = await db.collection('users').add(novoUsuario);
+
+    res.status(201).json({
+      message: 'Usuário criado com sucesso',
+      user_id: docRef.id,
+      usuario: {
+        id: docRef.id,
+        ...novoUsuario
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: 'CREATION_ERROR',
+        message: 'Erro ao criar usuário'
+      }
+    });
+  }
+});
+
+/**
+ * GET /admin/users/:user_id
+ * Obter detalhes de um usuário (apenas proprietário)
+ */
+app.get('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const doc = await db.collection('users').doc(user_id).get();
+
+    if (!doc.exists) {
+      return res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Usuário não encontrado'
+        }
+      });
+    }
+
+    const data = doc.data();
+    delete data.password;
+
+    res.json({
+      usuario: {
+        id: doc.id,
+        ...data
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: 'DATABASE_ERROR',
+        message: 'Erro ao buscar usuário'
+      }
+    });
+  }
+});
+
+/**
+ * PUT /admin/users/:user_id
+ * Atualizar usuário (apenas proprietário)
+ */
+app.put('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const {
+      name,
+      phone,
+      cpf,
+      role,
+      municipio_id,
+      status
+    } = req.body;
+
+    const updateData = {};
+    
+    if (name) updateData.name = name;
+    if (phone) updateData.phone = phone;
+    if (cpf) updateData.cpf = cpf;
+    if (role) {
+      const validRoles = ['admin_master', 'admin_municipio', 'gestor_contrato', 'fiscal_contrato'];
+      if (!validRoles.includes(role)) {
+        return res.status(400).json({
+          error: {
+            code: 'INVALID_ROLE',
+            message: `Role inválida. Roles válidos: ${validRoles.join(', ')}`
+          }
+        });
+      }
+      updateData.role = role;
+    }
+    if (municipio_id) updateData.municipio_id = municipio_id;
+    if (status) updateData.status = status;
+
+    updateData.updated_at = new Date().toISOString();
+    updateData.updated_by = req.user.email;
+
+    await db.collection('users').doc(user_id).update(updateData);
+
+    res.json({
+      message: 'Usuário atualizado com sucesso',
+      user_id: user_id
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: 'UPDATE_ERROR',
+        message: 'Erro ao atualizar usuário'
+      }
+    });
+  }
+});
+
+/**
+ * DELETE /admin/users/:user_id
+ * Deletar usuário (apenas proprietário)
+ */
+app.delete('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    
+    // Verificar se o usuário que está deletando não é a si mesmo
+    const userDoc = await db.collection('users').doc(user_id).get();
+    if (userDoc.exists && userDoc.data().email === req.user.email) {
+      return res.status(400).json({
+        error: {
+          code: 'CANNOT_DELETE_SELF',
+          message: 'Você não pode deletar a si mesmo'
+        }
+      });
+    }
+
+    await db.collection('users').doc(user_id).delete();
+
+    res.status(204).send();
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: 'DELETE_ERROR',
+        message: 'Erro ao deletar usuário'
+      }
+    });
+  }
+});
+
+/**
+ * GET /admin/users/statistics
+ * Estatísticas de usuários por role (apenas proprietário)
+ */
+app.get('/admin/users/statistics', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const snapshot = await db.collection('users').get();
+
+    const stats = {
+      admin_master: 0,
+      admin_municipio: 0,
+      gestor_contrato: 0,
+      fiscal_contrato: 0,
+      total: snapshot.size
+    };
+
+    snapshot.docs.forEach(doc => {
+      const role = doc.data().role;
+      if (stats.hasOwnProperty(role)) {
+        stats[role]++;
+      }
+    });
+
+    res.json({
+      statistics: stats
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: 'STATS_ERROR',
+        message: 'Erro ao obter estatísticas'
+      }
+    });
+  }
+});
+
+// ============================================
+// ROTAS - RELATÓRIOS E FATURAMENTO
+// ============================================
+
+/**
+ * GET /admin/revenue
+ * Obter dados de receita (apenas proprietário)
+ */
+app.get('/admin/revenue', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const { period = '12months' } = req.query; // 'month', 'quarter', '12months'
+
+    const municipiosSnapshot = await db.collection('municipalities').get();
+    
+    const planPrices = {
+      standard: 5000,
+      profissional: 15000,
+      premium: 30000
+    };
+
+    let totalRevenue = 0;
+    const revenueByMunicpio = {};
+    const revenueByPlan = {
+      standard: 0,
+      profissional: 0,
+      premium: 0
+    };
+
+    municipiosSnapshot.docs.forEach(doc => {
+      const municipio = doc.data();
+      const planPrice = planPrices[municipio.license_type] || 0;
+      
+      totalRevenue += planPrice;
+      revenueByMunicpio[municipio.municipio_nome] = planPrice;
+      revenueByPlan[municipio.license_type] += planPrice;
+    });
+
+    res.json({
+      revenue: {
+        total_annual: totalRevenue,
+        monthly_average: totalRevenue / 12,
+        by_municipality: revenueByMunicpio,
+        by_plan: revenueByPlan,
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: 'REVENUE_ERROR',
+        message: 'Erro ao obter dados de receita'
+      }
+    });
+  }
+});
+
+/**
+ * GET /admin/reports/expiring-licenses
+ * Obter licenças que vão vencer (apenas proprietário)
+ */
+app.get('/admin/reports/expiring-licenses', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const { days = 30 } = req.query;
+
+    const municipiosSnapshot = await db.collection('municipalities').get();
+    
+    const now = new Date();
+    const futureDate = new Date(now.getTime() + parseInt(days) * 24 * 60 * 60 * 1000);
+
+    const expiringLicenses = [];
+
+    municipiosSnapshot.docs.forEach(doc => {
+      const municipio = doc.data();
+      const expireDate = new Date(municipio.license_expires);
+      
+      if (expireDate <= futureDate && expireDate > now) {
+        const daysUntilExpire = Math.ceil((expireDate - now) / (1000 * 60 * 60 * 24));
+        expiringLicenses.push({
+          municipio_id: doc.id,
+          municipio_nome: municipio.municipio_nome,
+          license_type: municipio.license_type,
+          expires_at: municipio.license_expires,
+          days_until_expiry: daysUntilExpire
+        });
+      }
+    });
+
+    expiringLicenses.sort((a, b) => a.days_until_expiry - b.days_until_expiry);
+
+    res.json({
+      expiring_licenses: expiringLicenses,
+      total_expiring: expiringLicenses.length,
+      period_days: parseInt(days)
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: 'REPORT_ERROR',
+        message: 'Erro ao obter relatório de licenças'
+      }
+    });
+  }
+});
+
+/**
+ * GET /admin/reports/municipality-stats
+ * Estatísticas por município (apenas proprietário)
+ */
+app.get('/admin/reports/municipality-stats', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const municipiosSnapshot = await db.collection('municipalities').get();
+    
+    const stats = [];
+
+    for (const muniDoc of municipiosSnapshot.docs) {
+      const municipio = muniDoc.data();
+      
+      // Contar usuários
+      const usersSnapshot = await db.collection('users')
+        .where('municipio_id', '==', muniDoc.id)
+        .get();
+      
+      // Contar contratos
+      const contratosSnapshot = await db.collection('contratos')
+        .where('municipio_id', '==', muniDoc.id)
+        .get();
+
+      stats.push({
+        municipio_id: muniDoc.id,
+        municipio_nome: municipio.municipio_nome,
+        license_type: municipio.license_type,
+        users: {
+          current: usersSnapshot.size,
+          max: municipio.max_users,
+          usage_percent: Math.round((usersSnapshot.size / municipio.max_users) * 100)
+        },
+        contracts: {
+          current: contratosSnapshot.size,
+          max: municipio.max_contracts,
+          usage_percent: Math.round((contratosSnapshot.size / municipio.max_contracts) * 100)
+        },
+        license_expires: municipio.license_expires,
+        status: municipio.status
+      });
+    }
+
+    res.json({
+      municipalities_stats: stats,
+      total_municipalities: stats.length
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: 'REPORT_ERROR',
+        message: 'Erro ao obter estatísticas por município'
       }
     });
   }

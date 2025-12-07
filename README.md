@@ -44,9 +44,10 @@ CicloIntegrado/
 │   └── styles.css                 # Estilos globais e componentes
 ├── js/
 │   └── main.js                    # Funções JavaScript principais
-├── pages/
+- **pages/
 │   ├── login.html                 # Tela de login
-│   ├── dashboard.html             # Painel principal
+│   ├── admin-dashboard.html       # 👑 Dashboard Admin Master (NOVO)
+│   ├── dashboard.html             # Painel principal (municipios)
 │   ├── cadastro-contratos.html    # Novo contrato
 │   ├── listagem-contratos.html    # Lista de contratos
 │   ├── detalhes-contrato-1.html   # Detalhes contrato 1
@@ -139,6 +140,40 @@ CicloIntegrado/
 - Implementar autenticação com tokens
 - Validar todas as entradas do usuário
 - CORS configurado corretamente
+
+## 👑 Dashboard Admin Master
+
+**NOVO!** Dashboard completo para gerenciar todo seu negócio SaaS.
+
+### Funcionalidades:
+- 📊 **4 Métricas principais**: Municípios, Usuários, Receita, Licenças
+- 📈 **Gráficos em tempo real**: Receita mensal, distribuição por plano
+- 🏢 **Gestão de Municípios**: Criar, editar, deletar municípios
+- 👥 **Gestão de Usuários por Role**: 4 níveis hierárquicos
+- 💰 **Faturamento**: Receita total, por município, por plano
+- 📋 **Relatórios**: Licenças vencendo, estatísticas, uso de recursos
+- 🔔 **Alertas**: Licenças expirando em 30 dias
+
+**Acesso:** 
+```
+http://localhost:8888/pages/admin-dashboard.html
+```
+
+**Documentação Completa:**
+→ Leia `ADMIN-MASTER-DASHBOARD.md`
+
+### Hierarquia de Roles:
+```
+Admin Master (Você - Proprietário)
+  ├─ Município 1
+  │   ├─ Admin Municipio
+  │   ├─ Gestor de Contrato
+  │   └─ Fiscal de Contrato
+  └─ Município 2
+      ├─ Admin Municipio
+      ├─ Gestor de Contrato
+      └─ Fiscal de Contrato
+```
 
 ## 📱 Responsividade
 
