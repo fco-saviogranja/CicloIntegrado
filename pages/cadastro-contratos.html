@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html class="light" lang="pt-br"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Cadastro de Contratos</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;700;900&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+
+    <link href="./css/styles.css" rel="stylesheet"/>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark">
+<div class="relative flex h-auto min-h-screen w-full group/design-root overflow-x-hidden">
+<aside class="flex w-64 flex-col border-r border-gray-200 bg-white dark:border-gray-700 dark:bg-background-dark fixed h-full z-20">
+<div class="flex items-center gap-4 px-6 h-[65px] border-b border-gray-200 dark:border-gray-700">
+<img alt="Logo do Município" class="h-10 w-auto" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCYr0hdxnjkgpF2r-K_h_692epJCgH78E9td5ddT5NDkxKVU-nV1P9oe3mHu2kSPEzVVIi2vrmE7EmfLPNtmKDzCWkXqUNNmA6tVUHUt2CObIN6sXCp3TDcZrMtgYvamXORjqNqQi6tIhQ6OWvBdWwjiCFwjuljmx7ZKu-eUR6mNfJ-Oa1PcyJ5-aMN7cFvW9rjd0bImVYA8P6J1xUHpaZfKgJUBSRKQdpqarikGaqm281CEddYsRD_KzdHaAvpv4aFL8b0Ml7XRXTR"/>
+</div>
+<nav class="flex flex-col gap-1 p-4 flex-1">
+<a class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" href="#">
+<span class="material-symbols-outlined text-xl">dashboard</span>
+<span class="text-sm font-medium">Dashboard</span>
+</a>
+<a class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-primary bg-primary/10 font-bold dark:text-primary dark:bg-primary/20" href="#">
+<span class="material-symbols-outlined text-xl">folder</span>
+<span class="text-sm">Contratos</span>
+</a>
+<a class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" href="#">
+<span class="material-symbols-outlined text-xl">bar_chart</span>
+<span class="text-sm font-medium">Relatórios</span>
+</a>
+<a class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" href="#">
+<span class="material-symbols-outlined text-xl">notifications</span>
+<span class="text-sm font-medium">Notificações</span>
+</a>
+<a class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" href="#">
+<span class="material-symbols-outlined text-xl">settings</span>
+<span class="text-sm font-medium">Configurações</span>
+</a>
+</nav>
+<div class="p-4 border-t border-gray-200 dark:border-gray-700">
+<a class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" href="#">
+<span class="material-symbols-outlined text-xl">help</span>
+<span class="text-sm font-medium">Ajuda</span>
+</a>
+<a class="flex items-center gap-3 rounded-lg px-4 py-2.5 text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800" href="#">
+<span class="material-symbols-outlined text-xl">logout</span>
+<span class="text-sm font-medium">Sair</span>
+</a>
+</div>
+</aside>
+<div class="flex flex-col flex-1 pl-64">
+<header class="flex items-center justify-end whitespace-nowrap border-b border-solid border-b-gray-200 dark:border-b-gray-700 px-6 sm:px-10 py-3 bg-white dark:bg-background-dark sticky top-0 z-10 h-[65px]">
+<div class="flex flex-1 justify-end gap-4 sm:gap-6">
+<div class="flex gap-2">
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 w-10 bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100">
+<span class="material-symbols-outlined text-xl">notifications</span>
+</button>
+<button class="flex max-w-[480px] cursor-pointer items-center justify-center overflow-hidden rounded-full h-10 w-10 bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-100">
+<span class="material-symbols-outlined text-xl">help</span>
+</button>
+</div>
+<div class="bg-center bg-no-repeat aspect-square bg-cover rounded-full size-10" data-alt="User avatar" style='background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuB2QlbFzWSXa-E62ADSgZo6le9Ij2beR8wYKy0flPXv_ByINPtHWNoSw_KoY6n2RU3ffu2xjjJlWncMKvQAtKyaYoj1OemlQpi55i0znU_sEbfanhneHRtZval3KPyIe8YtD6py6nHsfuZHeB5djnDR-oz8iu_nG4XNyFQtuOqhuNojL8YfhAW3ih2htlMy1F4oy4Oi9zCpA7PKFY9dyxOXAUN4z-saOhexGrxonn87AVrzsVXQBV8e2G4yEMZyyOtVhIVLRbRLyifJ");'></div>
+</div>
+</header>
+<main class="flex h-full grow flex-col">
+<div class="px-4 sm:px-6 lg:px-10 flex flex-1 justify-center py-8">
+<div class="layout-content-container flex flex-col w-full max-w-5xl flex-1 gap-8">
+<div class="flex flex-col gap-4">
+<div class="flex flex-wrap gap-2">
+<a class="text-gray-500 dark:text-gray-400 text-sm font-medium leading-normal" href="#">Home</a>
+<span class="text-gray-500 dark:text-gray-400 text-sm font-medium leading-normal">/</span>
+<a class="text-gray-500 dark:text-gray-400 text-sm font-medium leading-normal" href="#">Contratos</a>
+<span class="text-gray-500 dark:text-gray-400 text-sm font-medium leading-normal">/</span>
+<span class="text-gray-800 dark:text-gray-100 text-sm font-medium leading-normal">Novo Contrato</span>
+</div>
+<div class="flex flex-wrap justify-between gap-3">
+<p class="text-gray-900 dark:text-white text-3xl sm:text-4xl font-black leading-tight tracking-[-0.033em] min-w-72">Cadastro de Contratos</p>
+</div>
+</div>
+<div class="flex flex-col gap-8">
+<div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-background-dark/50">
+<h2 class="text-gray-900 dark:text-white text-xl font-bold leading-tight tracking-[-0.015em] px-6 pb-3 pt-5 border-b border-gray-200 dark:border-gray-700">Informações Básicas</h2>
+<div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+<label class="flex flex-col w-full">
+<p class="text-gray-800 dark:text-gray-200 text-sm font-medium leading-normal pb-2">Número do Contrato</p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-800 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-background-dark h-12 placeholder:text-gray-500 dark:placeholder:text-gray-400 px-4 text-sm font-normal leading-normal" placeholder="Ex: 001/2024" value=""/>
+</label>
+<label class="flex flex-col w-full md:col-span-2">
+<p class="text-gray-800 dark:text-gray-200 text-sm font-medium leading-normal pb-2">Objeto do Contrato</p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-800 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-background-dark h-12 placeholder:text-gray-500 dark:placeholder:text-gray-400 px-4 text-sm font-normal leading-normal" placeholder="Descreva o objeto do contrato" value=""/>
+</label>
+<label class="flex flex-col w-full">
+<p class="text-gray-800 dark:text-gray-200 text-sm font-medium leading-normal pb-2">Contratante</p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-800 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-background-dark h-12 placeholder:text-gray-500 dark:placeholder:text-gray-400 px-4 text-sm font-normal leading-normal" placeholder="Nome do contratante" value="Prefeitura Municipal Exemplo"/>
+</label>
+<label class="flex flex-col w-full">
+<p class="text-gray-800 dark:text-gray-200 text-sm font-medium leading-normal pb-2">Contratado</p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-800 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-background-dark h-12 placeholder:text-gray-500 dark:placeholder:text-gray-400 px-4 text-sm font-normal leading-normal" placeholder="Nome ou razão social do contratado" value=""/>
+</label>
+</div>
+</div>
+<div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-background-dark/50">
+<h2 class="text-gray-900 dark:text-white text-xl font-bold leading-tight tracking-[-0.015em] px-6 pb-3 pt-5 border-b border-gray-200 dark:border-gray-700">Dados Financeiros</h2>
+<div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<label class="flex flex-col w-full">
+<p class="text-gray-800 dark:text-gray-200 text-sm font-medium leading-normal pb-2">Valor Original</p>
+<div class="relative">
+<span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500 dark:text-gray-400 text-sm">R$</span>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-800 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-background-dark h-12 placeholder:text-gray-500 dark:placeholder:text-gray-400 pl-10 pr-4 text-sm font-normal leading-normal" placeholder="0,00" type="text" value=""/>
+</div>
+</label>
+<label class="flex flex-col w-full">
+<p class="text-gray-800 dark:text-gray-200 text-sm font-medium leading-normal pb-2">Valor Atual</p>
+<div class="relative">
+<span class="absolute inset-y-0 left-0 flex items-center pl-4 text-gray-500 dark:text-gray-400 text-sm">R$</span>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-800 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-background-dark h-12 placeholder:text-gray-500 dark:placeholder:text-gray-400 pl-10 pr-4 text-sm font-normal leading-normal" placeholder="0,00" type="text" value=""/>
+</div>
+</label>
+<label class="flex flex-col w-full">
+<p class="text-gray-800 dark:text-gray-200 text-sm font-medium leading-normal pb-2">Modalidade</p>
+<select class="form-select flex w-full min-w-0 flex-1 appearance-none overflow-hidden rounded-lg text-gray-800 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-background-dark h-12 placeholder:text-gray-500 dark:placeholder:text-gray-400 px-4 text-sm font-normal leading-normal">
+<option>Licitação</option>
+<option>Contratação Direta</option>
+<option>Inexigibilidade</option>
+</select>
+</label>
+</div>
+</div>
+<div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-background-dark/50">
+<h2 class="text-gray-900 dark:text-white text-xl font-bold leading-tight tracking-[-0.015em] px-6 pb-3 pt-5 border-b border-gray-200 dark:border-gray-700">Vigência do Contrato</h2>
+<div class="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+<label class="flex flex-col w-full">
+<p class="text-gray-800 dark:text-gray-200 text-sm font-medium leading-normal pb-2">Data de Início</p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-800 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-background-dark h-12 placeholder:text-gray-500 dark:placeholder:text-gray-400 px-4 text-sm font-normal leading-normal" type="date"/>
+</label>
+<label class="flex flex-col w-full">
+<p class="text-gray-800 dark:text-gray-200 text-sm font-medium leading-normal pb-2">Data de Término</p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-800 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-background-dark h-12 placeholder:text-gray-500 dark:placeholder:text-gray-400 px-4 text-sm font-normal leading-normal" type="date"/>
+</label>
+<label class="flex flex-col w-full">
+<p class="text-gray-800 dark:text-gray-200 text-sm font-medium leading-normal pb-2">Prazo (dias)</p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-500 dark:text-gray-400 focus:outline-0 focus:ring-0 border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 h-12 placeholder:text-gray-500 dark:placeholder:text-gray-400 px-4 text-sm font-normal leading-normal" placeholder="Auto" readonly=""/>
+</label>
+<label class="flex flex-col w-full">
+<p class="text-gray-800 dark:text-gray-200 text-sm font-medium leading-normal pb-2">Status</p>
+<input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-lg text-gray-500 dark:text-gray-400 focus:outline-0 focus:ring-0 border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 h-12 placeholder:text-gray-500 dark:placeholder:text-gray-400 px-4 text-sm font-normal leading-normal" placeholder="Auto" readonly=""/>
+</label>
+</div>
+</div>
+<div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-background-dark/50">
+<h2 class="text-gray-900 dark:text-white text-xl font-bold leading-tight tracking-[-0.015em] px-6 pb-3 pt-5 border-b border-gray-200 dark:border-gray-700">Documentação</h2>
+<div class="p-6 flex flex-col gap-4">
+<div class="flex flex-col items-center justify-center w-full p-6 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-background-light dark:bg-background-dark">
+<span class="material-symbols-outlined text-4xl text-gray-400 dark:text-gray-500">cloud_upload</span>
+<p class="mt-2 text-sm text-gray-600 dark:text-gray-300"><span class="font-semibold text-primary">Clique para enviar</span> ou arraste e solte</p>
+<p class="text-xs text-gray-500 dark:text-gray-400">PDFs (máx. 10MB por arquivo)</p>
+<input accept=".pdf" class="hidden" id="dropzone-file" multiple="" type="file"/>
+</div>
+<div class="flex flex-col gap-3">
+<div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-red-500">picture_as_pdf</span>
+<span class="text-sm font-medium text-gray-800 dark:text-gray-200">termo_de_contrato_final.pdf</span>
+</div>
+<button class="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-500">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button>
+</div>
+<div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-red-500">picture_as_pdf</span>
+<span class="text-sm font-medium text-gray-800 dark:text-gray-200">anexo_proposta_comercial.pdf</span>
+</div>
+<button class="text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-500">
+<span class="material-symbols-outlined text-xl">delete</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<div class="rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-background-dark/50">
+<h2 class="text-gray-900 dark:text-white text-xl font-bold leading-tight tracking-[-0.015em] px-6 pb-3 pt-5 border-b border-gray-200 dark:border-gray-700">Responsáveis</h2>
+<div class="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+<label class="flex flex-col w-full">
+<p class="text-gray-800 dark:text-gray-200 text-sm font-medium leading-normal pb-2">Gestor do Contrato</p>
+<select class="form-select flex w-full min-w-0 flex-1 appearance-none overflow-hidden rounded-lg text-gray-800 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-background-dark h-12 placeholder:text-gray-500 dark:placeholder:text-gray-400 px-4 text-sm font-normal leading-normal">
+<option>Selecione um gestor...</option>
+<option>Ana Silva</option>
+<option>Carlos Pereira</option>
+</select>
+</label>
+<label class="flex flex-col w-full">
+<p class="text-gray-800 dark:text-gray-200 text-sm font-medium leading-normal pb-2">Fiscal do Contrato</p>
+<select class="form-select flex w-full min-w-0 flex-1 appearance-none overflow-hidden rounded-lg text-gray-800 dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-gray-300 dark:border-gray-600 bg-white dark:bg-background-dark h-12 placeholder:text-gray-500 dark:placeholder:text-gray-400 px-4 text-sm font-normal leading-normal">
+<option>Selecione um fiscal...</option>
+<option>João Mendes</option>
+<option>Mariana Costa</option>
+</select>
+</label>
+</div>
+</div>
+<div class="flex justify-end gap-4 pt-4">
+<button class="flex items-center justify-center rounded-lg h-12 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-100 text-sm font-bold px-6">Cancelar</button>
+<button class="flex items-center justify-center rounded-lg h-12 bg-primary text-white text-sm font-bold px-6">Salvar Contrato</button>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+</div>
+
+
+
+<!-- Footer Padrão - Ciclo Integrado -->
+<footer class="w-full border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-8 mt-auto">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+      <!-- Logo e Descrição -->
+      <div class="flex items-center gap-3">
+        <img 
+          alt="Logo Ciclo Integrado" 
+          class="h-12 object-contain" 
+          src="./assets/images/logo_ciclo_integrado.png"
+        />
+        <div class="flex flex-col">
+          <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Ciclo Integrado</p>
+          <p class="text-xs text-gray-600 dark:text-gray-400">Gestão de Contratos</p>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        © 2025 Ciclo Integrado. Todos os direitos reservados.
+      </p>
+    </div>
+  </div>
+</footer>
+
+
+<script src="./js/main.js"></script>
+</body></html>

@@ -1,0 +1,18 @@
+runtime: nodejs20
+
+env: standard
+
+entrypoint: serve -s pages/
+
+handlers:
+  - url: /css
+    static_dir: css
+  - url: /js
+    static_dir: js
+  - url: /assets
+    static_dir: assets
+  - url: /.*
+    script: auto
+
+env_variables:
+  ENVIRONMENT: "production"

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html class="light" lang="pt-br">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Tela de Login - Ciclo Integrado</title>
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com" rel="preconnect"/>
+    <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+    <link href="../css/styles.css" rel="stylesheet"/>
+    <script>
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#137fec",
+                        "background-light": "#f6f7f8",
+                        "background-dark": "#101922",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+    <style>
+        body {
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+    </style>
+
+    <link href="./css/styles.css" rel="stylesheet"/>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display">
+<div class="relative flex min-h-screen w-full flex-col group/design-root" style="--checkbox-tick-svg: url('data:image/svg+xml,%3csvg viewBox=%270 0 16 16%27 fill=%27rgb(255,255,255)%27 xmlns=%27http://www.w3.org/2000/svg%27%3e%3cpath d=%27M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z%27/%3e%3c/svg%3e');">
+    <div class="flex flex-1 w-full">
+        <div class="flex w-full max-w-full">
+            <main class="flex-1 flex flex-col items-stretch justify-center">
+                <div class="grid lg:grid-cols-2 min-h-screen">
+                    <div class="relative hidden lg:flex flex-col items-center justify-center bg-background-light dark:bg-background-dark p-12">
+                        <div class="w-full max-w-lg text-center">
+                            <img alt="Logo Ciclo Integrado" class="h-20 mx-auto mb-4 object-contain" src="../assets/images/logo_ciclo_integrado.png"/>
+                            <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 tracking-wide">CICLO INTEGRADO</h2>
+                            <p class="mt-1 text-base text-gray-600 dark:text-gray-400">Plataforma de Contratos</p>
+                            <p class="mt-32 text-sm text-gray-500 dark:text-gray-400">Gestão de Contratos Municipais. Acesse para administrar, monitorar e otimizar os processos contratuais.</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-center justify-center p-6 sm:p-12 bg-white dark:bg-gray-900">
+                        <div class="w-full max-w-sm">
+                            <div class="mb-8 text-center lg:text-left">
+                                <img alt="Logo Ciclo Integrado" class="h-12 mb-4 mx-auto lg:mx-0 object-contain" src="../assets/images/logo_ciclo_integrado.png"/>
+                                <h1 class="text-[#111418] dark:text-gray-100 tracking-tight text-2xl font-semibold leading-tight">Login de Acesso</h1>
+                                <p class="text-gray-500 dark:text-gray-400 mt-1 text-sm">Bem-vindo(a) de volta! Insira suas credenciais.</p>
+                            </div>
+                            <form class="space-y-4">
+                                <div>
+                                    <label class="flex flex-col">
+                                        <p class="text-gray-700 dark:text-gray-200 text-sm font-medium leading-normal pb-1.5">Selecionar Município</p>
+                                        <select class="form-select flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-md text-[#111418] dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbe0e6] dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary dark:focus:border-primary h-11 placeholder:text-[#617589] dark:placeholder-gray-500 px-3.5 py-2.5 text-sm font-normal leading-normal">
+                                            <option disabled="" selected="" value="">Escolha um município</option>
+                                            <option value="municipio1">Município A</option>
+                                            <option value="municipio2">Município B</option>
+                                            <option value="municipio3">Município C</option>
+                                        </select>
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="flex flex-col">
+                                        <p class="text-gray-700 dark:text-gray-200 text-sm font-medium leading-normal pb-1.5">E-mail ou Usuário</p>
+                                        <input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-md text-[#111418] dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbe0e6] dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary dark:focus:border-primary h-11 placeholder:text-[#617589] dark:placeholder-gray-500 px-3.5 py-2.5 text-sm font-normal leading-normal" placeholder="seuemail@dominio.com" type="email" value=""/>
+                                    </label>
+                                </div>
+                                <div>
+                                    <label class="flex flex-col">
+                                        <p class="text-gray-700 dark:text-gray-200 text-sm font-medium leading-normal pb-1.5">Senha</p>
+                                        <div class="relative flex w-full flex-1 items-stretch">
+                                            <input class="form-input flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-md text-[#111418] dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbe0e6] dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary dark:focus:border-primary h-11 placeholder:text-[#617589] dark:placeholder-gray-500 px-3.5 py-2.5 text-sm font-normal leading-normal pr-10" placeholder="Digite sua senha" type="password" value=""/>
+                                            <button aria-label="Toggle password visibility" class="absolute inset-y-0 right-0 flex items-center justify-center pr-3.5 text-[#617589] dark:text-gray-400 hover:text-primary dark:hover:text-primary focus:outline-none" type="button">
+                                                <span class="material-symbols-outlined text-xl" style="font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24">visibility</span>
+                                            </button>
+                                        </div>
+                                    </label>
+                                </div>
+                                <div class="flex items-center justify-between flex-wrap gap-4">
+                                    <label class="flex items-center gap-x-2">
+                                        <input class="h-4 w-4 rounded-sm border-[#dbe0e6] dark:border-gray-600 border bg-transparent text-primary dark:text-primary checked:bg-primary dark:checked:bg-primary checked:border-primary dark:checked:border-primary checked:bg-[image:--checkbox-tick-svg] focus:ring-2 focus:ring-offset-0 focus:ring-primary/50 focus:ring-offset-white dark:focus:ring-offset-gray-900 focus:outline-none" type="checkbox"/>
+                                        <p class="text-gray-700 dark:text-gray-300 text-sm font-normal leading-normal">Lembrar-me</p>
+                                    </label>
+                                    <a class="text-sm font-medium text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded-sm" href="#">Esqueci minha senha</a>
+                                </div>
+                                <div class="pt-2">
+                                    <button class="flex min-w-[84px] w-full cursor-pointer items-center justify-center overflow-hidden rounded-md h-10 px-5 bg-primary text-white text-sm font-medium leading-normal tracking-wide hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-200">
+                                        <span class="truncate">Entrar</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="w-full border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-6 mt-auto">
+    <div class="max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+            <p class="text-xs text-gray-500 dark:text-gray-400">© 2025 Ciclo Integrado. Todos os direitos reservados.</p>
+            <div class="flex gap-6 text-xs">
+                <a href="#" class="text-gray-500 dark:text-gray-400 hover:text-primary transition-colors">Privacidade</a>
+                <a href="#" class="text-gray-500 dark:text-gray-400 hover:text-primary transition-colors">Termos</a>
+                <a href="#" class="text-gray-500 dark:text-gray-400 hover:text-primary transition-colors">Suporte</a>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script src="../js/main.js"></script>
+
+
+<!-- Footer Padrão - Ciclo Integrado -->
+<footer class="w-full border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-8 mt-auto">
+  <div class="max-w-7xl mx-auto">
+    <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+      <!-- Logo e Descrição -->
+      <div class="flex items-center gap-3">
+        <img 
+          alt="Logo Ciclo Integrado" 
+          class="h-12 object-contain" 
+          src="./assets/images/logo_ciclo_integrado.png"
+        />
+        <div class="flex flex-col">
+          <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Ciclo Integrado</p>
+          <p class="text-xs text-gray-600 dark:text-gray-400">Gestão de Contratos</p>
+        </div>
+      </div>
+      <!-- Copyright -->
+      <p class="text-xs text-gray-500 dark:text-gray-400">
+        © 2025 Ciclo Integrado. Todos os direitos reservados.
+      </p>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
+

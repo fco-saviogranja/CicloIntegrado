@@ -1,0 +1,29 @@
+{
+  "name": "ciclo-integrado",
+  "version": "1.0.0",
+  "description": "Plataforma de Gestão de Contratos Municipais - Ciclo Integrado",
+  "main": "index.html",
+  "scripts": {
+    "dev": "live-server pages/",
+    "build": "echo 'Build script - implementar conforme necessário'",
+    "deploy": "gcloud app deploy"
+  },
+  "keywords": [
+    "contratos",
+    "gestão",
+    "municipal",
+    "ciclo integrado"
+  ],
+  "author": "Francisco Saviogranja",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/fco-saviogranja/CicloIntegrado"
+  },
+  "devDependencies": {
+    "live-server": "^1.2.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
