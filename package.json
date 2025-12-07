@@ -21,7 +21,7 @@
     "url": "https://github.com/fco-saviogranja/CicloIntegrado"
   },
   "devDependencies": {
-    "live-server": "^1.2.2"
+    "live-server": "^1.2.0"
   },
   "engines": {
     "node": ">=16.0.0"
