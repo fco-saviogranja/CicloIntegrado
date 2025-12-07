@@ -1,0 +1,45 @@
+{
+  "hosting": {
+    "public": ".",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "backend/**",
+      ".git/**",
+      "scripts/**",
+      "TELAS/**",
+      "*.md",
+      "package.json",
+      "package-lock.json",
+      "dev-server.py",
+      "Chaves - Senhas.txt"
+    ],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "pages/admin-dashboard.html"
+      }
+    ],
+    "headers": [
+      {
+        "source": "**/*.{js,css}",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=3600"
+          }
+        ]
+      },
+      {
+        "source": "**/*.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "public, max-age=300"
+          }
+        ]
+      }
+    ]
+  }
+}

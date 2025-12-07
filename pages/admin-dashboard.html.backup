@@ -1,0 +1,475 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Master - Ciclo Integrado</title>
+    <link href="https://cdn.tailwindcss.com" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Symbols+Outlined" rel="stylesheet">
+    <link href="../css/styles.css" rel="stylesheet">
+    <style>
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        .metric-card {
+            background: linear-gradient(135deg, #137fec 0%, #0056b3 100%);
+            color: white;
+        }
+        .metric-card.success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+        .metric-card.warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+        .metric-card.danger {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-50 dark:bg-gray-900">
+    <!-- Sidebar Navigation -->
+    <div class="flex h-screen bg-gray-50 dark:bg-gray-900">
+        <!-- Sidebar -->
+        <div class="w-64 bg-white dark:bg-gray-800 shadow-lg overflow-y-auto">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <span class="material-symbols-outlined text-white">admin_panel_settings</span>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-gray-900 dark:text-white">Ciclo Integrado</h1>
+                        <p class="text-xs text-gray-500">Admin Master</p>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="p-4 space-y-2">
+                <a href="#dashboard" class="nav-item active flex items-center gap-3 px-4 py-2 rounded-lg bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                    <span class="material-symbols-outlined">dashboard</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="#municipios" class="nav-item flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+                    <span class="material-symbols-outlined">apartment</span>
+                    <span>Municípios</span>
+                </a>
+                <a href="#usuarios" class="nav-item flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+                    <span class="material-symbols-outlined">group</span>
+                    <span>Usuários</span>
+                </a>
+                <a href="#faturamento" class="nav-item flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+                    <span class="material-symbols-outlined">receipt</span>
+                    <span>Faturamento</span>
+                </a>
+                <a href="#relatorios" class="nav-item flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+                    <span class="material-symbols-outlined">analytics</span>
+                    <span>Relatórios</span>
+                </a>
+                <a href="#configuracoes" class="nav-item flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
+                    <span class="material-symbols-outlined">settings</span>
+                    <span>Configurações</span>
+                </a>
+            </nav>
+
+            <div class="absolute bottom-0 w-64 p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
+                <button onclick="toggleDarkMode()" class="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <span class="material-symbols-outlined">brightness_4</span>
+                    <span class="text-sm text-gray-700 dark:text-gray-300">Dark Mode</span>
+                </button>
+                <button onclick="logout()" class="w-full flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/30 text-red-600 dark:text-red-400 mt-2">
+                    <span class="material-symbols-outlined">logout</span>
+                    <span class="text-sm">Sair</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="flex-1 overflow-y-auto">
+            <!-- Top Bar -->
+            <div class="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-8 py-4 flex items-center justify-between">
+                <h2 id="page-title" class="text-2xl font-bold text-gray-900 dark:text-white">Dashboard</h2>
+                <div class="flex items-center gap-4">
+                    <button class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                        <span class="material-symbols-outlined text-gray-600 dark:text-gray-400">notifications</span>
+                    </button>
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center">
+                            <span class="material-symbols-outlined text-white text-lg">account_circle</span>
+                        </div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900 dark:text-white">Você</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">admin_master</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="p-8">
+                <!-- Dashboard Section -->
+                <div id="dashboard-section" class="space-y-6">
+                    <!-- Key Metrics -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="metric-card rounded-lg p-6 shadow">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-white/80 text-sm">Total Municípios</p>
+                                    <h3 id="total-municipios" class="text-4xl font-bold mt-2">0</h3>
+                                </div>
+                                <span class="material-symbols-outlined text-4xl opacity-30">apartment</span>
+                            </div>
+                            <p class="text-white/60 text-xs mt-4">Ativos: <span id="municipios-ativos">0</span></p>
+                        </div>
+
+                        <div class="metric-card success rounded-lg p-6 shadow">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-white/80 text-sm">Total Usuários</p>
+                                    <h3 id="total-usuarios" class="text-4xl font-bold mt-2">0</h3>
+                                </div>
+                                <span class="material-symbols-outlined text-4xl opacity-30">group</span>
+                            </div>
+                            <p class="text-white/60 text-xs mt-4">Últimos 30 dias: <span id="usuarios-mes">0</span></p>
+                        </div>
+
+                        <div class="metric-card warning rounded-lg p-6 shadow">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-white/80 text-sm">Receita Mensal</p>
+                                    <h3 id="receita-mensal" class="text-3xl font-bold mt-2">R$ 0</h3>
+                                </div>
+                                <span class="material-symbols-outlined text-4xl opacity-30">trending_up</span>
+                            </div>
+                            <p class="text-white/60 text-xs mt-4">Estimado: <span id="receita-estimada">R$ 0</span></p>
+                        </div>
+
+                        <div class="metric-card danger rounded-lg p-6 shadow">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-white/80 text-sm">Licenças Vencendo</p>
+                                    <h3 id="licencas-vencendo" class="text-4xl font-bold mt-2">0</h3>
+                                </div>
+                                <span class="material-symbols-outlined text-4xl opacity-30">warning</span>
+                            </div>
+                            <p class="text-white/60 text-xs mt-4">Próximos 30 dias</p>
+                        </div>
+                    </div>
+
+                    <!-- Charts Section -->
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <!-- Receita por Mês -->
+                        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Receita (Últimos 12 Meses)</h3>
+                            <div class="chart-container">
+                                <canvas id="receita-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <!-- Uso por Plano -->
+                        <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Distribuição por Plano</h3>
+                            <div class="space-y-3">
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">Premium</span>
+                                        <span class="text-sm font-medium" id="plano-premium">0</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                        <div class="bg-blue-600 h-2 rounded-full" id="plano-premium-bar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">Profissional</span>
+                                        <span class="text-sm font-medium" id="plano-prof">0</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                        <div class="bg-green-600 h-2 rounded-full" id="plano-prof-bar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex items-center justify-between mb-1">
+                                        <span class="text-sm text-gray-600 dark:text-gray-400">Standard</span>
+                                        <span class="text-sm font-medium" id="plano-standard">0</span>
+                                    </div>
+                                    <div class="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                                        <div class="bg-yellow-600 h-2 rounded-full" id="plano-standard-bar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Municípios List -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-lg font-semibold text-gray-900 dark:text-white">Municípios</h3>
+                            <button onclick="openCreateMunicipioModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+                                <span class="material-symbols-outlined">add</span>
+                                <span>Novo Município</span>
+                            </button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="border-b border-gray-200 dark:border-gray-700">
+                                        <th class="text-left py-3 px-4 text-gray-700 dark:text-gray-300 font-medium">Município</th>
+                                        <th class="text-left py-3 px-4 text-gray-700 dark:text-gray-300 font-medium">Plano</th>
+                                        <th class="text-left py-3 px-4 text-gray-700 dark:text-gray-300 font-medium">Usuários</th>
+                                        <th class="text-left py-3 px-4 text-gray-700 dark:text-gray-300 font-medium">Licença Vence</th>
+                                        <th class="text-left py-3 px-4 text-gray-700 dark:text-gray-300 font-medium">Status</th>
+                                        <th class="text-right py-3 px-4 text-gray-700 dark:text-gray-300 font-medium">Ações</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="municipios-table" class="divide-y divide-gray-200 dark:divide-gray-700">
+                                    <!-- Preenchido por JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Licenças Vencendo -->
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow">
+                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">⚠️ Licenças Vencendo em Breve</h3>
+                        <div id="licencas-vencendo-list" class="space-y-3">
+                            <!-- Preenchido por JavaScript -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Municípios Section -->
+                <div id="municipios-section" class="hidden">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Gestão de Municípios</h3>
+                        <!-- Conteúdo de municipios -->
+                    </div>
+                </div>
+
+                <!-- Usuários Section -->
+                <div id="usuarios-section" class="hidden">
+                    <div class="bg-white dark:bg-gray-800 rounded-lg p-6 shadow">
+                        <h3 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">Gestão de Usuários</h3>
+                        <div class="mb-6">
+                            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                <div class="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                                    <p class="text-gray-600 dark:text-gray-400 text-sm">Admins Master</p>
+                                    <p class="text-3xl font-bold text-blue-600 dark:text-blue-400">1</p>
+                                </div>
+                                <div class="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg">
+                                    <p class="text-gray-600 dark:text-gray-400 text-sm">Admins Municipais</p>
+                                    <p class="text-3xl font-bold text-green-600 dark:text-green-400" id="admins-municipais">0</p>
+                                </div>
+                                <div class="bg-yellow-50 dark:bg-yellow-900/20 p-4 rounded-lg">
+                                    <p class="text-gray-600 dark:text-gray-400 text-sm">Gestores de Contratos</p>
+                                    <p class="text-3xl font-bold text-yellow-600 dark:text-yellow-400" id="gestores">0</p>
+                                </div>
+                                <div class="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg">
+                                    <p class="text-gray-600 dark:text-gray-400 text-sm">Fiscais de Contratos</p>
+                                    <p class="text-3xl font-bold text-purple-600 dark:text-purple-400" id="fiscais">0</p>
+                                </div>
+                            </div>
+                        </div>
+                        <table class="w-full border-collapse">
+                            <thead>
+                                <tr class="border-b border-gray-200 dark:border-gray-700">
+                                    <th class="text-left py-3 px-4 text-gray-700 dark:text-gray-300">Email</th>
+                                    <th class="text-left py-3 px-4 text-gray-700 dark:text-gray-300">Nome</th>
+                                    <th class="text-left py-3 px-4 text-gray-700 dark:text-gray-300">Role</th>
+                                    <th class="text-left py-3 px-4 text-gray-700 dark:text-gray-300">Município</th>
+                                    <th class="text-left py-3 px-4 text-gray-700 dark:text-gray-300">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usuarios-table" class="divide-y divide-gray-200 dark:divide-gray-700">
+                                <!-- Preenchido por JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Criar Município -->
+    <div id="create-municipio-modal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div class="p-6 border-b border-gray-200 dark:border-gray-700">
+                <h3 class="text-xl font-bold text-gray-900 dark:text-white">Criar Novo Município</h3>
+            </div>
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nome do Município</label>
+                    <input type="text" id="municipio-nome" placeholder="Ex: Prefeitura de São Paulo" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Email do Admin</label>
+                    <input type="email" id="municipio-admin-email" placeholder="admin@municipio.com" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Plano</label>
+                    <select id="municipio-plano" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
+                        <option value="standard">Standard (R$ 5.000/ano)</option>
+                        <option value="profissional">Profissional (R$ 15.000/ano)</option>
+                        <option value="premium">Premium (R$ 30.000/ano)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Máximo de Usuários</label>
+                    <input type="number" id="municipio-max-users" placeholder="20" class="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg dark:bg-gray-700 dark:text-white">
+                </div>
+            </div>
+            <div class="p-6 border-t border-gray-200 dark:border-gray-700 flex gap-3">
+                <button onclick="closeCreateMunicipioModal()" class="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                    Cancelar
+                </button>
+                <button onclick="criarMunicipio()" class="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg">
+                    Criar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/config.js"></script>
+    <script src="../js/main.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Dados de demonstração
+        const mockMunicipios = [
+            { id: 'sao-paulo', nome: 'Prefeitura de São Paulo', plano: 'premium', usuarios: 85, max_usuarios: 100, licenca_vence: '2025-12-31', status: 'ativo', receita_anual: 30000 },
+            { id: 'rio-janeiro', nome: 'Prefeitura do Rio de Janeiro', plano: 'profissional', usuarios: 45, max_usuarios: 50, licenca_vence: '2025-06-15', status: 'ativo', receita_anual: 15000 },
+            { id: 'brasilia', nome: 'Prefeitura de Brasília', plano: 'profissional', usuarios: 32, max_usuarios: 50, licenca_vence: '2025-03-10', status: 'ativo', receita_anual: 15000 },
+            { id: 'salvador', nome: 'Prefeitura de Salvador', plano: 'standard', usuarios: 18, max_usuarios: 20, licenca_vence: '2026-01-20', status: 'ativo', receita_anual: 5000 },
+            { id: 'fortaleza', nome: 'Prefeitura de Fortaleza', plano: 'premium', usuarios: 78, max_usuarios: 100, licenca_vence: '2025-08-30', status: 'ativo', receita_anual: 30000 },
+        ];
+
+        // Carregar Dashboard
+        function loadDashboard() {
+            const totalMunicipios = mockMunicipios.length;
+            const municipiosAtivos = mockMunicipios.filter(m => m.status === 'ativo').length;
+            const totalUsuarios = mockMunicipios.reduce((sum, m) => sum + m.usuarios, 0);
+            const receitaMensal = mockMunicipios.reduce((sum, m) => sum + (m.receita_anual / 12), 0);
+            const licencasVencendo = mockMunicipios.filter(m => {
+                const vencimento = new Date(m.licenca_vence);
+                const hoje = new Date();
+                const dias = (vencimento - hoje) / (1000 * 60 * 60 * 24);
+                return dias > 0 && dias < 30;
+            }).length;
+
+            document.getElementById('total-municipios').textContent = totalMunicipios;
+            document.getElementById('municipios-ativos').textContent = municipiosAtivos;
+            document.getElementById('total-usuarios').textContent = totalUsuarios;
+            document.getElementById('receita-mensal').textContent = 'R$ ' + receitaMensal.toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+            document.getElementById('receita-estimada').textContent = 'R$ ' + (receitaMensal * 12).toLocaleString('pt-BR', { maximumFractionDigits: 0 });
+            document.getElementById('licencas-vencendo').textContent = licencasVencendo;
+
+            // Distribuição por plano
+            const premium = mockMunicipios.filter(m => m.plano === 'premium').length;
+            const profissional = mockMunicipios.filter(m => m.plano === 'profissional').length;
+            const standard = mockMunicipios.filter(m => m.plano === 'standard').length;
+
+            document.getElementById('plano-premium').textContent = premium;
+            document.getElementById('plano-prof').textContent = profissional;
+            document.getElementById('plano-standard').textContent = standard;
+
+            document.getElementById('plano-premium-bar').style.width = (premium / totalMunicipios * 100) + '%';
+            document.getElementById('plano-prof-bar').style.width = (profissional / totalMunicipios * 100) + '%';
+            document.getElementById('plano-standard-bar').style.width = (standard / totalMunicipios * 100) + '%';
+
+            // Tabela de municípios
+            const tabela = document.getElementById('municipios-table');
+            tabela.innerHTML = mockMunicipios.map(m => `
+                <tr>
+                    <td class="py-3 px-4 text-gray-900 dark:text-white font-medium">${m.nome}</td>
+                    <td class="py-3 px-4 text-gray-600 dark:text-gray-400">${m.plano.charAt(0).toUpperCase() + m.plano.slice(1)}</td>
+                    <td class="py-3 px-4 text-gray-600 dark:text-gray-400">${m.usuarios} / ${m.max_usuarios}</td>
+                    <td class="py-3 px-4 text-gray-600 dark:text-gray-400">${new Date(m.licenca_vence).toLocaleDateString('pt-BR')}</td>
+                    <td class="py-3 px-4">
+                        <span class="px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-medium">Ativo</span>
+                    </td>
+                    <td class="py-3 px-4 text-right space-x-2">
+                        <button class="text-blue-600 hover:text-blue-700" title="Editar">
+                            <span class="material-symbols-outlined text-lg">edit</span>
+                        </button>
+                        <button class="text-red-600 hover:text-red-700" title="Deletar">
+                            <span class="material-symbols-outlined text-lg">delete</span>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+
+            // Licenças vencendo
+            const licencasLista = document.getElementById('licencas-vencendo-list');
+            const licencasVencendoList = mockMunicipios
+                .filter(m => {
+                    const vencimento = new Date(m.licenca_vence);
+                    const hoje = new Date();
+                    const dias = (vencimento - hoje) / (1000 * 60 * 60 * 24);
+                    return dias > 0 && dias < 30;
+                })
+                .sort((a, b) => new Date(a.licenca_vence) - new Date(b.licenca_vence));
+
+            if (licencasVencendoList.length === 0) {
+                licencasLista.innerHTML = '<p class="text-gray-500 dark:text-gray-400">Nenhuma licença vencendo nos próximos 30 dias</p>';
+            } else {
+                licencasLista.innerHTML = licencasVencendoList.map(m => {
+                    const dias = Math.ceil((new Date(m.licenca_vence) - new Date()) / (1000 * 60 * 60 * 24));
+                    return `
+                        <div class="flex items-center justify-between p-4 border border-yellow-200 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg">
+                            <div>
+                                <p class="font-medium text-gray-900 dark:text-white">${m.nome}</p>
+                                <p class="text-sm text-gray-600 dark:text-gray-400">Vence em ${dias} dias (${new Date(m.licenca_vence).toLocaleDateString('pt-BR')})</p>
+                            </div>
+                            <button class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg text-sm">Renovar</button>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        // Navegação
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                const section = e.currentTarget.getAttribute('href').substring(1);
+                document.querySelectorAll('[id$="-section"]').forEach(s => s.classList.add('hidden'));
+                document.getElementById(section + '-section').classList.remove('hidden');
+                document.getElementById('page-title').textContent = section.charAt(0).toUpperCase() + section.slice(1);
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('bg-blue-50', 'dark:bg-blue-900/30', 'text-blue-600', 'dark:text-blue-400'));
+                e.currentTarget.classList.add('bg-blue-50', 'dark:bg-blue-900/30', 'text-blue-600', 'dark:text-blue-400');
+            });
+        });
+
+        // Modal functions
+        function openCreateMunicipioModal() {
+            document.getElementById('create-municipio-modal').classList.remove('hidden');
+        }
+
+        function closeCreateMunicipioModal() {
+            document.getElementById('create-municipio-modal').classList.add('hidden');
+        }
+
+        function criarMunicipio() {
+            const nome = document.getElementById('municipio-nome').value;
+            const email = document.getElementById('municipio-admin-email').value;
+            const plano = document.getElementById('municipio-plano').value;
+            const maxUsers = document.getElementById('municipio-max-users').value;
+
+            if (!nome || !email || !plano || !maxUsers) {
+                alert('Por favor, preencha todos os campos');
+                return;
+            }
+
+            alert(`Município criado: ${nome}\nEmail Admin: ${email}\nPlano: ${plano}\nMáx Usuários: ${maxUsers}`);
+            closeCreateMunicipioModal();
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = './login.html';
+        }
+
+        // Inicializar
+        loadDashboard();
+    </script>
+</body>
+</html>

@@ -15,8 +15,11 @@ const app = express();
 // Middleware
 app.use(cors({
   origin: [
+    'http://localhost:8080',
     'http://localhost:8888',
     'http://localhost:3000',
+    'https://ciclo-integrado.firebaseapp.com',
+    'https://ciclo-integrado.web.app',
     'https://ciclo-integrado.appspot.com'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

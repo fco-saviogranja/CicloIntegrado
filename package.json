@@ -4,7 +4,7 @@
   "description": "Plataforma de Gestão de Contratos Municipais - Ciclo Integrado",
   "main": "index.html",
   "scripts": {
-    "dev": "live-server pages/",
+    "dev": "live-server --port=8080 --entry-file=pages/admin-dashboard.html",
     "build": "echo 'Build script - implementar conforme necessário'",
     "deploy": "gcloud app deploy"
   },
