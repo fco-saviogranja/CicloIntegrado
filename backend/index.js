@@ -545,6 +545,301 @@ app.use((err, req, res, next) => {
 });
 
 // ============================================
+// MIDDLEWARE - Admin Master Check
+// ============================================
+
+/**
+ * Middleware para verificar se é Admin Master (Proprietário)
+ */
+const isAdminMaster = async (req, res, next) => {
+  if (req.user.role !== 'admin_master') {
+    return res.status(403).json({
+      error: {
+        code: 'FORBIDDEN',
+        message: 'Acesso negado. Apenas proprietário do sistema.'
+      }
+    });
+  }
+  next();
+};
+
+// ============================================
+// ROTAS - ADMIN MASTER (PROPRIETÁRIO)
+// ============================================
+
+/**
+ * GET /admin/municipalities
+ * Listar todos os municípios (apenas proprietário)
+ */
+app.get('/admin/municipalities', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const municipiosRef = db.collection('municipalities');
+    const snapshot = await municipiosRef.get();
+
+    const municipalities = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+
+    res.json({
+      total: municipalities.length,
+      municipalities
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: 'DATABASE_ERROR',
+        message: 'Erro ao buscar municípios'
+      }
+    });
+  }
+});
+
+/**
+ * POST /admin/municipalities
+ * Criar novo município (apenas proprietário)
+ */
+app.post('/admin/municipalities', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const {
+      municipio_id,
+      municipio_nome,
+      estado,
+      cep,
+      admin_email,
+      admin_name,
+      license_type,
+      license_expires,
+      max_users,
+      max_contracts
+    } = req.body;
+
+    if (!municipio_id || !municipio_nome || !admin_email) {
+      return res.status(400).json({
+        error: {
+          code: 'MISSING_FIELDS',
+          message: 'Campos obrigatórios: municipio_id, municipio_nome, admin_email'
+        }
+      });
+    }
+
+    // Criar documento do município
+    const municipio = {
+      municipio_id,
+      municipio_nome,
+      estado: estado || '',
+      cep: cep || '',
+      license_type: license_type || 'standard',
+      license_expires: license_expires || new Date(new Date().getTime() + 365 * 24 * 60 * 60 * 1000).toISOString(),
+      max_users: max_users || 20,
+      max_contracts: max_contracts || 500,
+      status: 'active',
+      created_at: new Date().toISOString(),
+      created_by: req.user.email
+    };
+
+    await db.collection('municipalities').doc(municipio_id).set(municipio);
+
+    // Criar admin do município
+    const adminUser = {
+      email: admin_email,
+      password: 'Mudar123!', // IMPORTANTE: Admin deve mudar na primeira vez
+      name: admin_name || 'Admin',
+      role: 'admin',
+      municipio_id,
+      municipio_nome,
+      status: 'active',
+      created_at: new Date().toISOString(),
+      created_by: req.user.email,
+      last_login: null
+    };
+
+    await db.collection('users').add(adminUser);
+
+    res.status(201).json({
+      message: 'Município criado com sucesso',
+      municipio: municipio,
+      admin_email: admin_email,
+      temporary_password: 'Mudar123!',
+      warning: 'Admin deve mudar a senha na primeira vez que fazer login'
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: 'CREATION_ERROR',
+        message: 'Erro ao criar município'
+      }
+    });
+  }
+});
+
+/**
+ * GET /admin/municipalities/:municipio_id
+ * Obter detalhes de um município (apenas proprietário)
+ */
+app.get('/admin/municipalities/:municipio_id', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const { municipio_id } = req.params;
+    const doc = await db.collection('municipalities').doc(municipio_id).get();
+
+    if (!doc.exists) {
+      return res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Município não encontrado'
+        }
+      });
+    }
+
+    // Obter estatísticas do município
+    const usersSnapshot = await db.collection('users')
+      .where('municipio_id', '==', municipio_id)
+      .get();
+
+    const contratosSnapshot = await db.collection('contratos')
+      .where('municipio_id', '==', municipio_id)
+      .get();
+
+    res.json({
+      municipio: {
+        id: doc.id,
+        ...doc.data()
+      },
+      statistics: {
+        users: usersSnapshot.size,
+        contracts: contratosSnapshot.size,
+        usage_percent: Math.round((usersSnapshot.size / doc.data().max_users) * 100)
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: 'DATABASE_ERROR',
+        message: 'Erro ao buscar município'
+      }
+    });
+  }
+});
+
+/**
+ * PUT /admin/municipalities/:municipio_id
+ * Atualizar município (apenas proprietário)
+ */
+app.put('/admin/municipalities/:municipio_id', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const { municipio_id } = req.params;
+    const updateData = {
+      ...req.body,
+      updated_at: new Date().toISOString(),
+      updated_by: req.user.email
+    };
+
+    await db.collection('municipalities').doc(municipio_id).update(updateData);
+
+    res.json({
+      message: 'Município atualizado com sucesso',
+      municipio_id: municipio_id
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: 'UPDATE_ERROR',
+        message: 'Erro ao atualizar município'
+      }
+    });
+  }
+});
+
+/**
+ * GET /admin/dashboard
+ * Dashboard completo para proprietário
+ */
+app.get('/admin/dashboard', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    // Total de municípios
+    const municipiosSnapshot = await db.collection('municipalities').get();
+    const totalMunicipios = municipiosSnapshot.size;
+
+    // Total de usuários
+    const usersSnapshot = await db.collection('users').get();
+    const totalUsuarios = usersSnapshot.size;
+
+    // Total de contratos
+    const contratosSnapshot = await db.collection('contratos').get();
+    const totalContratos = contratosSnapshot.size;
+
+    // Municípios ativos
+    const municipiosAtivos = municipiosSnapshot.docs.filter(doc => doc.data().status === 'active').length;
+
+    // Licenças vencendo em 30 dias
+    const now = new Date();
+    const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const licencasVencendo = municipiosSnapshot.docs.filter(doc => {
+      const expireDate = new Date(doc.data().license_expires);
+      return expireDate <= in30Days && expireDate > now;
+    }).length;
+
+    res.json({
+      dashboard: {
+        summary: {
+          total_municipalities: totalMunicipios,
+          active_municipalities: municipiosAtivos,
+          total_users: totalUsuarios,
+          total_contracts: totalContratos,
+          licenses_expiring_soon: licencasVencendo
+        },
+        timestamp: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: 'DASHBOARD_ERROR',
+        message: 'Erro ao carregar dashboard'
+      }
+    });
+  }
+});
+
+/**
+ * POST /admin/reset-password/:user_id
+ * Resetar senha de um usuário (apenas proprietário)
+ */
+app.post('/admin/reset-password/:user_id', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const { new_password } = req.body;
+
+    if (!new_password) {
+      return res.status(400).json({
+        error: {
+          code: 'MISSING_FIELDS',
+          message: 'Nova senha é obrigatória'
+        }
+      });
+    }
+
+    await db.collection('users').doc(user_id).update({
+      password: new_password,
+      password_reset_at: new Date().toISOString(),
+      password_reset_by: req.user.email
+    });
+
+    res.json({
+      message: 'Senha resetada com sucesso',
+      user_id: user_id
+    });
+  } catch (error) {
+    res.status(500).json({
+      error: {
+        code: 'UPDATE_ERROR',
+        message: 'Erro ao resetar senha'
+      }
+    });
+  }
+});
+
+// ============================================
 // EXPORTAR
 // ============================================
 

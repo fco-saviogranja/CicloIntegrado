@@ -1,6 +1,27 @@
 # Ciclo Integrado 🔄
 
-Plataforma de Gestão de Contratos Municipais desenvolvida com foco em eficiência, transparência e integração de processos contratuais.
+Plataforma SaaS de Gestão de Contratos Municipais desenvolvida com foco em eficiência, transparência e integração de processos contratuais.
+
+Você é o **Proprietário do Sistema** e oferece licenças para múltiplos municípios, mantendo seus dados completamente isolados.
+
+## 👑 Modelo de Negócio
+
+```
+Você (Proprietário) 
+  ↓
+  Vende para Municípios (Múltiplos clientes)
+  ↓
+  Cada município tem Admin próprio
+  ↓
+  Você controla TUDO, vê TODOS os dados
+```
+
+**Suas Credenciais:**
+- Email: `admin@ciclo-integrado.com`
+- Role: `admin_master` (Proprietário)
+- Acesso: Dashboard com dados de TODOS os municípios
+
+**Leia:** `CARTAO-REFERENCIA.md`, `GUIA-PROPRIETARIO.md`, `MODELO-NEGOCIO.md`
 
 ## 📋 Características
 
