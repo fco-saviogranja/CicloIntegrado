@@ -1,0 +1,250 @@
+{
+  "info": {
+    "name": "Ciclo Integrado API",
+    "description": "Collection de testes para a API do Ciclo Integrado",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Signup",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"novo@municipio.gov\",\n  \"password\": \"senha123\",\n  \"name\": \"Novo Usuário\",\n  \"municipio_id\": \"mun_123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/signup",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "signup"]
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"novo@municipio.gov\",\n  \"password\": \"senha123\",\n  \"municipio_id\": \"mun_123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["auth", "login"]
+            },
+            "tests": [
+              "if (pm.response.code === 200) {",
+              "  pm.environment.set('token', pm.response.json().token);",
+              "}"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Contratos",
+      "item": [
+        {
+          "name": "Listar Contratos",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/contratos?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["contratos"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Criar Contrato",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"numero\": \"MUN-2025-0001\",\n  \"fornecedor_id\": \"forn_123\",\n  \"valor\": 250000,\n  \"data_inicio\": \"2025-01-01\",\n  \"data_vencimento\": \"2025-12-31\",\n  \"secretaria_id\": \"sec_123\",\n  \"descricao\": \"Contrato de serviços\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/contratos",
+              "host": ["{{base_url}}"],
+              "path": ["contratos"]
+            }
+          }
+        },
+        {
+          "name": "Obter Contrato",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/contratos/{{contrato_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["contratos", "{{contrato_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Atualizar Contrato",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"renovado\",\n  \"data_vencimento\": \"2026-12-31\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/contratos/{{contrato_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["contratos", "{{contrato_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Deletar Contrato",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/contratos/{{contrato_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["contratos", "{{contrato_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Usuários",
+      "item": [
+        {
+          "name": "Listar Usuários",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url}}/usuarios?page=1&limit=20",
+              "host": ["{{base_url}}"],
+              "path": ["usuarios"],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1"
+                },
+                {
+                  "key": "limit",
+                  "value": "20"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Status",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/health",
+              "host": ["{{base_url}}"],
+              "path": ["health"]
+            }
+          }
+        },
+        {
+          "name": "Status API",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/status",
+              "host": ["{{base_url}}"],
+              "path": ["status"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "token",
+      "value": ""
+    },
+    {
+      "key": "contrato_id",
+      "value": ""
+    }
+  ]
+}

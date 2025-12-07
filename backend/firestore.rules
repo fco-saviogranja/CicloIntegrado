@@ -1,0 +1,105 @@
+/**
+ * Firestore Rules - Ciclo Integrado
+ * 
+ * Copie este conteúdo para:
+ * Google Cloud Console > Firestore > Rules
+ */
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Função para verificar autenticação
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Função para verificar se é admin
+    function isAdmin() {
+      return isAuthenticated() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Função para verificar se pertence ao mesmo município
+    function sameMunicipio(municipio_id) {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.municipio_id == municipio_id;
+    }
+
+    // ============================================
+    // CONTRATOS
+    // ============================================
+    
+    match /contratos/{document=**} {
+      // Ler: Autenticado e mesmo município
+      allow read: if isAuthenticated() && 
+                     sameMunicipio(resource.data.municipio_id);
+      
+      // Criar: Autenticado
+      allow create: if isAuthenticated() && 
+                       request.resource.data.municipio_id == 
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.municipio_id;
+      
+      // Atualizar: Admin ou criador
+      allow update: if isAuthenticated() && 
+                       (isAdmin() || request.auth.uid == resource.data.created_by);
+      
+      // Deletar: Admin
+      allow delete: if isAdmin();
+    }
+
+    // ============================================
+    // USUÁRIOS
+    // ============================================
+    
+    match /users/{userId} {
+      // Ler próprio perfil
+      allow read: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Ler todos (apenas admin)
+      allow read: if isAdmin();
+      
+      // Criar novo usuário
+      allow create: if true; // Permitir signup
+      
+      // Atualizar próprio perfil
+      allow update: if isAuthenticated() && request.auth.uid == userId;
+      
+      // Deletar: Admin apenas
+      allow delete: if isAdmin();
+    }
+
+    // ============================================
+    // FORNECEDORES
+    // ============================================
+    
+    match /fornecedores/{document=**} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ============================================
+    // SECRETARIAS
+    // ============================================
+    
+    match /secretarias/{document=**} {
+      allow read: if isAuthenticated();
+      allow create: if isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ============================================
+    // NOTIFICAÇÕES
+    // ============================================
+    
+    match /notificacoes/{userId}/{document=**} {
+      allow read: if request.auth.uid == userId;
+      allow create: if request.auth.uid == userId;
+      allow update: if request.auth.uid == userId;
+      allow delete: if request.auth.uid == userId;
+    }
+
+  }
+}

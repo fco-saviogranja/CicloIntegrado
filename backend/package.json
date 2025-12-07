@@ -1,0 +1,28 @@
+{
+  "name": "ciclo-integrado-backend",
+  "version": "1.0.0",
+  "description": "Backend do Ciclo Integrado usando Google Cloud Functions",
+  "main": "index.js",
+  "scripts": {
+    "dev": "functions-framework --target=api --debug",
+    "deploy": "gcloud functions deploy ciclo-integrado --runtime nodejs20 --trigger-http --allow-unauthenticated --region us-central1",
+    "logs": "gcloud functions logs read ciclo-integrado",
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "firebase-admin": "^12.0.0",
+    "jsonwebtoken": "^9.1.0",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.3.1",
+    "joi": "^17.11.0"
+  },
+  "devDependencies": {
+    "@google-cloud/functions-framework": "^3.5.0",
+    "jest": "^29.7.0"
+  },
+  "engines": {
+    "node": "20.x"
+  }
+}
