@@ -17,3 +17,70 @@ The key's randomart image is:
 |      .o.o o     |
 |     ......      |
 +----[SHA256]-----+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+👑 CICLO INTEGRADO - CREDENCIAIS DO PROPRIETÁRIO
+
+GUARDE ESTE ARQUIVO EM LOCAL SEGURO!
+
+═══════════════════════════════════════════════════════════════════════════════
+
+SUAS CREDENCIAIS (Admin Master):
+
+Email:     seu-email@ciclo-integrado.com
+Senha:     Sua-Senha-Super-Segura123!
+Role:      admin_master
+Acesso:    TOTAL (vê dados de TODOS os municípios)
+Status:    Proprietário do Sistema
+
+URLs:
+  Frontend:  http://localhost:8888/login.html
+  Backend:   http://localhost:8080
+  Firebase:  https://console.firebase.google.com (ciclo-integrado project)
+
+═══════════════════════════════════════════════════════════════════════════════
+
+ENDPOINTS PRINCIPAIS (Admin Master):
+
+POST   /admin/municipalities              → Criar novo município
+GET    /admin/municipalities              → Listar todos os municípios
+GET    /admin/municipalities/:municipio_id → Ver detalhes
+PUT    /admin/municipalities/:municipio_id → Atualizar município
+GET    /admin/dashboard                  → Dashboard com analytics global
+POST   /admin/reset-password/:user_id    → Resetar senha de qualquer usuário
+
+═══════════════════════════════════════════════════════════════════════════════
+
+MODELO DE NEGÓCIO:
+
+Você vende para múltiplos municípios:
+• PLANO STANDARD   =  R$ 5.000/ano  (20 usuários, 500 contratos)
+• PLANO PROFISSIONAL = R$ 15.000/ano (50 usuários, 2000 contratos)
+• PLANO PREMIUM    = R$ 30.000/ano (100+ usuários, 5000+ contratos)
+
+Exemplo com 15 municípios = R$ 250.000/ano de receita!
+
+═══════════════════════════════════════════════════════════════════════════════
+
+COMO COMEÇAR:
+
+1. Crie sua conta Admin Master no Firestore
+2. Faça login
+3. Crie seu primeiro município (teste)
+4. Crie em seguida municípios de clientes
+5. Envie credenciais (email + senha temporária)
+6. Acompanhe via dashboard
+7. Renove anualmente
+
+═══════════════════════════════════════════════════════════════════════════════
+
+DOCUMENTAÇÃO RELACIONADA:
+
+Leia nesta ordem:
+1. LEIA-PRIMEIRO.txt      ← Comece aqui!
+2. CARTAO-REFERENCIA.md   ← Resumo rápido
+3. GUIA-PROPRIETARIO.md   ← Detalhado
+4. MODELO-NEGOCIO.md      ← Estratégia comercial
+
+═══════════════════════════════════════════════════════════════════════════════
