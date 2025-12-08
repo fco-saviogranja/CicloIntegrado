@@ -626,66 +626,79 @@ app.post('/admin/municipalities', authenticateToken, isAdminMaster, async (req, 
     const {
       municipio_id,
       municipio_nome,
+      nome,
+      cidade,
       estado,
       cep,
-      admin_email,
-      admin_name,
+      plano,
       license_type,
       license_expires,
+      data_vencimento_licenca,
       max_users,
-      max_contracts
+      max_usuarios,
+      max_contracts,
+      status,
+      admin_email,
+      admin_name
     } = req.body;
 
-    if (!municipio_id || !municipio_nome || !admin_email) {
+    const id = municipio_id || (nome || cidade || '').toLowerCase();
+    const nomeMunicipio = municipio_nome || nome || cidade;
+
+    if (!id || !nomeMunicipio) {
       return res.status(400).json({
         error: {
           code: 'MISSING_FIELDS',
-          message: 'Campos obrigatórios: municipio_id, municipio_nome, admin_email'
+          message: 'Campos obrigatórios: municipio_id ou nome do município'
         }
       });
     }
 
-    // Criar documento do município
+    const licenseType = (license_type || plano || 'standard').toLowerCase();
+    const licenseExpires = license_expires || data_vencimento_licenca
+      ? new Date(data_vencimento_licenca || license_expires).toISOString()
+      : new Date(new Date().getTime() + 365 * 24 * 60 * 60 * 1000).toISOString();
+
     const municipio = {
-      municipio_id,
-      municipio_nome,
+      municipio_id: id,
+      municipio_nome: nomeMunicipio,
       estado: estado || '',
       cep: cep || '',
-      license_type: license_type || 'standard',
-      license_expires: license_expires || new Date(new Date().getTime() + 365 * 24 * 60 * 60 * 1000).toISOString(),
-      max_users: max_users || 20,
+      license_type: licenseType,
+      license_expires: licenseExpires,
+      max_users: max_users || max_usuarios || 20,
       max_contracts: max_contracts || 500,
-      status: 'active',
+      status: status || 'active',
       created_at: new Date().toISOString(),
       created_by: req.user.email
     };
 
-    await db.collection('municipalities').doc(municipio_id).set(municipio);
+    await db.collection('municipalities').doc(id).set(municipio);
 
-    // Criar admin do município
-    const adminUser = {
-      email: admin_email,
-      password: 'Mudar123!', // IMPORTANTE: Admin deve mudar na primeira vez
-      name: admin_name || 'Admin',
-      role: 'admin',
-      municipio_id,
-      municipio_nome,
-      status: 'active',
-      created_at: new Date().toISOString(),
-      created_by: req.user.email,
-      last_login: null
-    };
+    // Criar usuário admin somente se informações estiverem presentes
+    if (admin_email) {
+      const adminUser = {
+        email: admin_email,
+        password: 'Mudar123!',
+        name: admin_name || 'Admin Municipal',
+        role: 'admin',
+        municipio_id: id,
+        municipio_nome: nomeMunicipio,
+        status: 'active',
+        created_at: new Date().toISOString(),
+        created_by: req.user.email,
+        last_login: null
+      };
 
-    await db.collection('users').add(adminUser);
+      await db.collection('users').add(adminUser);
+    }
 
     res.status(201).json({
       message: 'Município criado com sucesso',
-      municipio: municipio,
-      admin_email: admin_email,
-      temporary_password: 'Mudar123!',
-      warning: 'Admin deve mudar a senha na primeira vez que fazer login'
+      municipio
     });
   } catch (error) {
+    console.error('Erro ao criar município:', error);
     res.status(500).json({
       error: {
         code: 'CREATION_ERROR',

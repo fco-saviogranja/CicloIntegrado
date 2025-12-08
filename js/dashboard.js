@@ -37,11 +37,19 @@ async function loadDashboardData() {
         ]);
         
         dashboardData = dashboard;
-        municipiosData = municipios.municipios || municipios || [];
+
+        const municipiosList = municipios?.municipios
+            || municipios?.municipalities
+            || municipios?.data
+            || municipios;
+        municipiosData = Array.isArray(municipiosList) ? municipiosList : [];
+        const municipiosTotal = typeof municipios?.total === 'number'
+            ? municipios.total
+            : municipiosData.length;
         
         // Atualizar UI
         updateDashboardStats(dashboard);
-        updateMunicipiosTable(Array.isArray(municipiosData) ? municipiosData : []);
+        updateMunicipiosTable(municipiosData, municipiosTotal);
         updateRevenueChart(receita);
         
         showLoading(false);
@@ -81,7 +89,7 @@ function updateDashboardStats(data) {
 /**
  * Atualiza a tabela de municípios
  */
-function updateMunicipiosTable(municipios) {
+function updateMunicipiosTable(municipios, total = null) {
     const tbody = document.getElementById('municipios-table');
     if (!tbody) return;
     
@@ -103,10 +111,20 @@ function updateMunicipiosTable(municipios) {
     }
     
     tbody.innerHTML = municipios.map(mun => {
-        const diasRestantes = getDaysUntil(mun.data_vencimento_licenca);
+        const municipioId = mun.municipio_id || mun.id || '';
+        const nomeMunicipio = mun.nome || mun.municipio_nome || mun.cidade || 'Sem nome';
+        const cidade = mun.cidade || mun.municipio_nome || '';
+        const estado = mun.estado ? `- ${mun.estado}` : '';
+        const planoBase = (mun.plano || mun.license_type || 'standard').toString();
+        const planoLabel = planoBase.charAt(0).toUpperCase() + planoBase.slice(1);
+        const maxUsuarios = mun.max_usuarios ?? mun.max_users ?? 0;
+        const usuariosAtuais = mun.usuarios_atuais ?? mun.current_users ?? 0;
+        const usagePercent = maxUsuarios > 0 ? Math.round((usuariosAtuais / maxUsuarios) * 100) : 0;
+        const licencaVencimento = mun.data_vencimento_licenca || mun.license_expires;
+        const diasRestantes = getDaysUntil(licencaVencimento);
+        const statusRaw = (mun.status || 'ativo').toString().toLowerCase();
         const statusColor = diasRestantes > 30 ? 'green' : diasRestantes > 0 ? 'amber' : 'red';
-        const usagePercent = mun.max_usuarios > 0 ? Math.round(((mun.usuarios_atuais || 0) / mun.max_usuarios) * 100) : 0;
-        const planoLabel = mun.plano ? mun.plano.charAt(0).toUpperCase() + mun.plano.slice(1) : 'Standard';
+        const statusText = statusRaw === 'inactive' || statusRaw === 'inativo' ? 'Inativo' : 'Ativo';
         
         return `
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
@@ -116,8 +134,8 @@ function updateMunicipiosTable(municipios) {
                             <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">location_city</span>
                         </div>
                         <div>
-                            <p class="font-medium">${mun.nome || 'Sem nome'}</p>
-                            <p class="text-sm text-text-secondary dark:text-gray-400">${mun.cidade || ''} ${mun.estado ? '- ' + mun.estado : ''}</p>
+                            <p class="font-medium">${nomeMunicipio}</p>
+                            <p class="text-sm text-text-secondary dark:text-gray-400">${cidade} ${estado}</p>
                         </div>
                     </div>
                 </td>
@@ -129,28 +147,28 @@ function updateMunicipiosTable(municipios) {
                         <div class="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                             <div class="h-full bg-green-500 rounded-full" style="width: ${usagePercent}%"></div>
                         </div>
-                        <span class="text-sm font-medium">${mun.usuarios_atuais || 0}/${mun.max_usuarios || 0}</span>
+                        <span class="text-sm font-medium">${usuariosAtuais}/${maxUsuarios}</span>
                     </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                    <p class="text-sm">${formatDate(mun.data_vencimento_licenca)}</p>
+                    <p class="text-sm">${formatDate(licencaVencimento)}</p>
                     <p class="text-xs text-${statusColor}-600 dark:text-${statusColor}-400">${diasRestantes !== null ? diasRestantes + ' dias' : '-'}</p>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <span class="px-2 py-1 text-xs font-medium bg-${statusColor}-100 dark:bg-${statusColor}-900/30 text-${statusColor}-600 dark:text-${statusColor}-400 rounded-full flex items-center gap-1 w-fit">
                         <span class="w-1.5 h-1.5 bg-${statusColor}-500 rounded-full"></span>
-                        ${(mun.status === 'ativo' || !mun.status) ? 'Ativo' : 'Inativo'}
+                        ${statusText}
                     </span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center gap-2">
-                        <button onclick="editMunicipio('${mun.municipio_id}')" class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Editar">
+                        <button onclick="editMunicipio('${municipioId}')" class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Editar">
                             <span class="material-symbols-outlined text-lg text-text-secondary dark:text-gray-400">edit</span>
                         </button>
-                        <button onclick="viewMunicipio('${mun.municipio_id}')" class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Ver detalhes">
+                        <button onclick="viewMunicipio('${municipioId}')" class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Ver detalhes">
                             <span class="material-symbols-outlined text-lg text-text-secondary dark:text-gray-400">visibility</span>
                         </button>
-                        <button onclick="deleteMunicipio('${mun.municipio_id}')" class="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Excluir">
+                        <button onclick="deleteMunicipio('${municipioId}')" class="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Excluir">
                             <span class="material-symbols-outlined text-lg text-red-600 dark:text-red-400">delete</span>
                         </button>
                     </div>
@@ -162,7 +180,8 @@ function updateMunicipiosTable(municipios) {
     // Atualizar contagem
     const countEl = document.querySelector('.p-4.border-t p.text-sm');
     if (countEl) {
-        countEl.textContent = `Mostrando ${municipios.length} de ${municipios.length} municípios`;
+        const totalCount = typeof total === 'number' ? total : municipios.length;
+        countEl.textContent = `Mostrando ${municipios.length} de ${totalCount} municípios`;
     }
 }
 

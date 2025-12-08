@@ -367,7 +367,10 @@ function requireAdminMaster() {
  */
 function formatDate(isoDate) {
   if (!isoDate) return '-';
-  const date = new Date(isoDate);
+  const date = isoDate && typeof isoDate === 'object' && 'seconds' in isoDate
+    ? new Date(isoDate.seconds * 1000)
+    : new Date(isoDate);
+  if (Number.isNaN(date.getTime())) return '-';
   return date.toLocaleDateString('pt-BR');
 }
 
@@ -388,7 +391,10 @@ function formatCurrency(value) {
 function getDaysUntil(isoDate) {
   if (!isoDate) return null;
   const now = new Date();
-  const target = new Date(isoDate);
+  const target = isoDate && typeof isoDate === 'object' && 'seconds' in isoDate
+    ? new Date(isoDate.seconds * 1000)
+    : new Date(isoDate);
+  if (Number.isNaN(target.getTime())) return null;
   const diff = target - now;
   return Math.ceil(diff / (1000 * 60 * 60 * 24));
 }
