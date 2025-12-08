@@ -346,6 +346,7 @@ Você tem um **sistema completo** pronto para:
 - ✅ **Testes** (Postman collection incluída)
 - ✅ **Deploy em produção** (Google Cloud Functions)
 - ✅ **Manutenção** (Git + documentação completa)
+- ✅ **Chat Agent (Assistente AI)** - [Ver documentação](CHAT-AGENT-LIMITS.md)
 
 **Próximo passo:** Customize para suas necessidades!
 

@@ -247,6 +247,18 @@ git push origin feature/minha-feature
 # Criar Pull Request no GitHub
 ```
 
+## 🤖 Chat Agent (Assistente AI)
+
+Para implementar um assistente AI no sistema, consulte:
+- **[CHAT-AGENT-LIMITS.md](CHAT-AGENT-LIMITS.md)** - Limites e boas práticas para chat agent
+
+Este documento inclui:
+- ✅ Limites de taxa (rate limiting)
+- ✅ Controle de tokens por plano
+- ✅ Exemplos de implementação
+- ✅ Monitoramento e alertas
+- ✅ Segurança e custos
+
 ## 🐛 Problemas Conhecidos
 
 - [ ] Implementar integração com backend
