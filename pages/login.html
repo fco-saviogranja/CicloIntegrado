@@ -50,7 +50,10 @@
                 <div class="grid lg:grid-cols-2 min-h-screen">
                     <div class="relative hidden lg:flex flex-col items-center justify-center bg-background-light dark:bg-background-dark p-12">
                         <div class="w-full max-w-lg text-center">
-                            <img alt="Logo Ciclo Integrado" class="h-80 mx-auto mb-8 object-contain" src="../assets/images/logo_ciclo_integrado.png"/>
+                            <div class="flex flex-col items-center gap-4">
+                                <img alt="Identidade Ciclo Integrado" class="h-40 object-contain" src="../assets/images/so_logo.png"/>
+                                <img alt="Slogan Ciclo Integrado" class="h-12 object-contain" src="../assets/images/slogan.png"/>
+                            </div>
                             <p class="mt-12 text-sm text-gray-500 dark:text-gray-400">Gestão de Contratos Municipais. Acesse para administrar, monitorar e otimizar os processos contratuais.</p>
                         </div>
                     </div>
@@ -61,10 +64,16 @@
                                 <p class="text-gray-500 dark:text-gray-400 mt-1 text-sm">Bem-vindo(a) de volta! Insira suas credenciais.</p>
                             </div>
                             <form class="space-y-4">
-                                <div>
+                                <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                     <label class="flex flex-col">
-                                        <p class="text-gray-700 dark:text-gray-200 text-sm font-medium leading-normal pb-1.5">Selecionar Município</p>
-                                        <select id="municipio-select" class="form-select flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-md text-[#111418] dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbe0e6] dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary dark:focus:border-primary h-11 placeholder:text-[#617589] dark:placeholder-gray-500 px-3.5 py-2.5 text-sm font-normal leading-normal">
+                                        <p class="text-gray-700 dark:text-gray-200 text-sm font-medium leading-normal pb-1.5">Estado</p>
+                                        <select id="estado-select" class="form-select flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-md text-[#111418] dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbe0e6] dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary dark:focus:border-primary h-11 px-3.5 py-2.5 text-sm font-normal leading-normal">
+                                            <option value="">Selecione um estado</option>
+                                        </select>
+                                    </label>
+                                    <label class="flex flex-col">
+                                        <p class="text-gray-700 dark:text-gray-200 text-sm font-medium leading-normal pb-1.5">Município</p>
+                                        <select id="municipio-select" class="form-select flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-md text-[#111418] dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbe0e6] dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary dark:focus:border-primary h-11 px-3.5 py-2.5 text-sm font-normal leading-normal" disabled>
                                             <option value="">Escolha um município</option>
                                         </select>
                                     </label>
@@ -129,7 +138,9 @@ document.addEventListener('DOMContentLoaded', async function() {
     const passwordInput = form.querySelector('input[type="password"]');
     const togglePasswordBtn = form.querySelector('button[aria-label="Toggle password visibility"]');
     const submitBtn = form.querySelector('button[type="submit"]');
+    const estadoSelect = document.getElementById('estado-select');
     const municipioSelect = document.getElementById('municipio-select');
+    let municipiosCache = [];
     
     // Toggle password visibility
     togglePasswordBtn.addEventListener('click', (e) => {
@@ -137,6 +148,70 @@ document.addEventListener('DOMContentLoaded', async function() {
         const type = passwordInput.type === 'password' ? 'text' : 'password';
         passwordInput.type = type;
     });
+
+    function populateEstados(estados) {
+        if (!estadoSelect) return;
+        estadoSelect.innerHTML = '<option value="">Selecione um estado</option>';
+        estados.forEach(estado => {
+            const option = document.createElement('option');
+            option.value = estado;
+            option.textContent = estado;
+            estadoSelect.appendChild(option);
+        });
+        estadoSelect.disabled = estados.length === 0;
+    }
+
+    function resetMunicipioSelect(message = 'Escolha um município') {
+        municipioSelect.innerHTML = `<option value="">${message}</option>`;
+        municipioSelect.disabled = true;
+    }
+
+    function populateMunicipiosPorEstado(estado) {
+        const filtered = municipiosCache.filter(item => item.estado === estado);
+        municipioSelect.innerHTML = '<option value="">Escolha um município</option>';
+        filtered.forEach(item => {
+            const option = document.createElement('option');
+            option.value = item.municipio_id;
+            option.textContent = item.nome;
+            municipioSelect.appendChild(option);
+        });
+        municipioSelect.disabled = filtered.length === 0;
+        if (filtered.length === 0) {
+            const message = estado ? 'Nenhum município disponível para este estado' : 'Escolha um município';
+            municipioSelect.innerHTML = `<option value="">${message}</option>`;
+        }
+    }
+
+    async function carregarMunicipiosPublicos() {
+        try {
+            resetMunicipioSelect('Carregando municípios...');
+            const response = await API.getPublicMunicipios();
+            municipiosCache = Array.isArray(response?.municipalities) ? response.municipalities : [];
+            const estados = Array.isArray(response?.states) ? response.states : Array.from(new Set(municipiosCache.map(item => item.estado).filter(Boolean))).sort();
+            populateEstados(estados);
+            if (estados.length === 0) {
+                resetMunicipioSelect('Municípios indisponíveis no momento');
+            } else {
+                resetMunicipioSelect('Selecione primeiro um estado');
+            }
+        } catch (error) {
+            console.error('Erro ao carregar municípios públicos:', error);
+            resetMunicipioSelect('Não foi possível carregar os municípios');
+        }
+    }
+
+    if (estadoSelect) {
+        estadoSelect.addEventListener('change', (event) => {
+            const estado = event.target.value;
+            if (!estado) {
+                resetMunicipioSelect('Selecione primeiro um estado');
+                return;
+            }
+            populateMunicipiosPorEstado(estado);
+        });
+    }
+
+    await carregarMunicipiosPublicos();
     
     // Handle login form submission
     form.addEventListener('submit', async (e) => {
@@ -144,10 +219,16 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         const email = emailInput.value.trim();
         const password = passwordInput.value;
-        const municipioId = municipioSelect.value;
+        const municipioId = municipioSelect.disabled ? '' : municipioSelect.value;
+        const selectedEstado = estadoSelect ? estadoSelect.value : '';
         
         if (!email || !password) {
             alert('Por favor, preencha email e senha');
+            return;
+        }
+
+        if (selectedEstado && !municipioId) {
+            alert('Selecione um município válido para o estado escolhido.');
             return;
         }
         
@@ -178,20 +259,23 @@ document.addEventListener('DOMContentLoaded', async function() {
 
 <!-- Footer Padrão - Ciclo Integrado -->
 <footer class="w-full border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-8 mt-auto">
-  <div class="max-w-7xl mx-auto">
-    <div class="flex flex-col md:flex-row items-center justify-between gap-6">
-      <!-- Logo e Descrição -->
-      <div class="flex items-center gap-3">
-        <img 
-          alt="Logo Ciclo Integrado" 
-          class="h-12 object-contain" 
-          src="../assets/images/logo_ciclo_integrado.png"
-        />
-        <div class="flex flex-col">
-          <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Ciclo Integrado</p>
-          <p class="text-xs text-gray-600 dark:text-gray-400">Gestão de Contratos</p>
-        </div>
-      </div>
+    <div class="max-w-7xl mx-auto">
+        <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+            <!-- Logo e Descrição -->
+            <div class="flex items-center gap-3">
+                <div class="flex flex-col items-start">
+                    <img 
+                        alt="Identidade Ciclo Integrado" 
+                        class="h-10 object-contain mb-2" 
+                        src="../assets/images/so_logo.png"
+                    />
+                    <img 
+                        alt="Slogan Ciclo Integrado" 
+                        class="h-6 object-contain" 
+                        src="../assets/images/slogan.png"
+                    />
+                </div>
+            </div>
       <!-- Copyright -->
       <p class="text-xs text-gray-500 dark:text-gray-400">
         © 2025 Ciclo Integrado. Todos os direitos reservados.

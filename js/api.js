@@ -38,6 +38,18 @@ const API = {
       throw error;
     }
   },
+
+  /**
+   * Lista municípios disponíveis para seleção no login
+   */
+  async getPublicMunicipios(params = {}) {
+    const query = new URLSearchParams();
+    if (params.estado) {
+      query.set('estado', params.estado);
+    }
+    const suffix = query.toString() ? `?${query.toString()}` : '';
+    return this.request(`/auth/municipalities${suffix}`, { skipAuth: true });
+  },
   
   /**
    * Faz logout e limpa dados locais
@@ -137,7 +149,34 @@ const API = {
    * Lista todos os municípios
    */
   async getMunicipios() {
-    return this.request('/admin/municipalities');
+    const response = await this.request('/admin/municipalities');
+    if (Array.isArray(response)) {
+      return {
+        municipalities: response,
+        total: response.length
+      };
+    }
+    if (response && typeof response === 'object') {
+      if (Array.isArray(response.municipalities)) {
+        return response;
+      }
+      if (Array.isArray(response.municipios)) {
+        return {
+          municipalities: response.municipios,
+          total: typeof response.total === 'number' ? response.total : response.municipios.length
+        };
+      }
+      if (Array.isArray(response.data)) {
+        return {
+          municipalities: response.data,
+          total: typeof response.total === 'number' ? response.total : response.data.length
+        };
+      }
+    }
+    return {
+      municipalities: [],
+      total: 0
+    };
   },
   
   /**

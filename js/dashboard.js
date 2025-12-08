@@ -17,6 +17,15 @@ if (!requireAdminMaster()) {
 let dashboardData = null;
 let municipiosData = [];
 let usuariosData = [];
+let filteredMunicipios = [];
+const municipioFilters = {
+    search: '',
+    plano: 'all',
+    status: 'all',
+    sort: 'name-asc'
+};
+let municipioBeingEdited = null;
+let municipiosTotalCount = 0;
 
 // ============================================
 // CARREGAMENTO DE DADOS
@@ -38,18 +47,18 @@ async function loadDashboardData() {
         
         dashboardData = dashboard;
 
-        const municipiosList = municipios?.municipios
-            || municipios?.municipalities
+        const municipiosList = municipios?.municipalities
+            || municipios?.municipios
             || municipios?.data
             || municipios;
         municipiosData = Array.isArray(municipiosList) ? municipiosList : [];
-        const municipiosTotal = typeof municipios?.total === 'number'
+        municipiosTotalCount = typeof municipios?.total === 'number'
             ? municipios.total
             : municipiosData.length;
         
         // Atualizar UI
         updateDashboardStats(dashboard);
-        updateMunicipiosTable(municipiosData, municipiosTotal);
+        applyMunicipioFilters();
         updateRevenueChart(receita);
         
         showLoading(false);
@@ -86,6 +95,130 @@ function updateDashboardStats(data) {
     }
 }
 
+// ============================================
+// FILTROS E ORDENAÇÃO DE MUNICÍPIOS
+// ============================================
+
+function normalizeValue(value) {
+    return value ? value.toString().trim().toLowerCase() : '';
+}
+
+function getMunicipioName(mun) {
+    return mun.nome || mun.municipio_nome || mun.cidade || mun.municipio_id || '';
+}
+
+function getMunicipioPlanoValue(mun) {
+    return normalizeValue(mun.plano || mun.license_type || '');
+}
+
+function formatPlanoLabel(value) {
+    const normalized = normalizeValue(value);
+    if (!normalized) return 'Standard';
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function getMunicipioStatusValue(mun) {
+    const status = normalizeValue(mun.status || 'ativo');
+    if (status === 'active') return 'ativo';
+    if (status === 'inactive') return 'inativo';
+    return status || 'ativo';
+}
+
+function getMunicipioLicenseDate(mun) {
+    const value = mun.data_vencimento_licenca || mun.license_expires;
+    if (!value) return null;
+    if (typeof value === 'object' && value.seconds) {
+        return new Date(value.seconds * 1000);
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function sortMunicipios(list) {
+    const sortOption = municipioFilters.sort;
+    const collator = new Intl.Collator('pt-BR', { sensitivity: 'base' });
+
+    return list.sort((a, b) => {
+        const nameA = getMunicipioName(a);
+        const nameB = getMunicipioName(b);
+        const dateA = getMunicipioLicenseDate(a);
+        const dateB = getMunicipioLicenseDate(b);
+
+        switch (sortOption) {
+            case 'name-desc':
+                return collator.compare(nameB, nameA);
+            case 'license-asc':
+                return (dateA ? dateA.getTime() : Infinity) - (dateB ? dateB.getTime() : Infinity);
+            case 'license-desc':
+                return (dateB ? dateB.getTime() : -Infinity) - (dateA ? dateA.getTime() : -Infinity);
+            default:
+                return collator.compare(nameA, nameB);
+        }
+    });
+}
+
+function applyMunicipioFilters() {
+    let list = Array.isArray(municipiosData) ? [...municipiosData] : [];
+    const searchTerm = normalizeValue(municipioFilters.search);
+
+    if (searchTerm) {
+        list = list.filter(mun => {
+            const searchable = [
+                getMunicipioName(mun),
+                mun.estado,
+                mun.cidade,
+                mun.municipio_id,
+                mun.cep,
+                mun.license_type
+            ].map(value => normalizeValue(value)).join(' ');
+            return searchable.includes(searchTerm);
+        });
+    }
+
+    if (municipioFilters.plano !== 'all') {
+        list = list.filter(mun => getMunicipioPlanoValue(mun) === municipioFilters.plano);
+    }
+
+    if (municipioFilters.status !== 'all') {
+        list = list.filter(mun => getMunicipioStatusValue(mun) === municipioFilters.status);
+    }
+
+    list = sortMunicipios(list);
+    filteredMunicipios = list;
+    updateMunicipiosTable(filteredMunicipios, municipiosTotalCount);
+}
+
+function syncMunicipioFilterControls() {
+    const searchInput = document.getElementById('municipio-search');
+    if (searchInput && searchInput.value !== municipioFilters.search) {
+        searchInput.value = municipioFilters.search;
+    }
+
+    const planoSelect = document.getElementById('municipio-filter-plano');
+    if (planoSelect && planoSelect.value !== municipioFilters.plano) {
+        planoSelect.value = municipioFilters.plano;
+    }
+
+    const statusSelect = document.getElementById('municipio-filter-status');
+    if (statusSelect && statusSelect.value !== municipioFilters.status) {
+        statusSelect.value = municipioFilters.status;
+    }
+
+    const sortSelect = document.getElementById('municipio-sort');
+    if (sortSelect && sortSelect.value !== municipioFilters.sort) {
+        sortSelect.value = municipioFilters.sort;
+    }
+}
+
+function resetMunicipioFilters() {
+    municipioFilters.search = '';
+    municipioFilters.plano = 'all';
+    municipioFilters.status = 'all';
+    municipioFilters.sort = 'name-asc';
+    syncMunicipioFilterControls();
+    applyMunicipioFilters();
+}
+
 /**
  * Atualiza a tabela de municípios
  */
@@ -93,16 +226,23 @@ function updateMunicipiosTable(municipios, total = null) {
     const tbody = document.getElementById('municipios-table');
     if (!tbody) return;
     
+    const totalCount = typeof total === 'number' ? total : municipios.length;
+    const hasRegisteredMunicipios = totalCount > 0;
+
     if (!Array.isArray(municipios) || municipios.length === 0) {
         tbody.innerHTML = `
             <tr>
                 <td colspan="6" class="px-6 py-8 text-center text-text-secondary dark:text-gray-400">
                     <div class="flex flex-col items-center gap-4">
                         <span class="material-symbols-outlined text-5xl opacity-50">location_city</span>
-                        <p>Nenhum município cadastrado ainda.</p>
-                        <button onclick="openCreateModal()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
-                            Cadastrar Primeiro Município
-                        </button>
+                        <p>${hasRegisteredMunicipios ? 'Nenhum município encontrado com os filtros aplicados.' : 'Nenhum município cadastrado ainda.'}</p>
+                        ${hasRegisteredMunicipios
+                            ? `<button onclick="resetMunicipioFilters()" class="px-4 py-2 border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">
+                                    Limpar filtros
+                               </button>`
+                            : `<button onclick="openCreateModal()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
+                                    Cadastrar Primeiro Município
+                               </button>`}
                     </div>
                 </td>
             </tr>
@@ -115,8 +255,7 @@ function updateMunicipiosTable(municipios, total = null) {
         const nomeMunicipio = mun.nome || mun.municipio_nome || mun.cidade || 'Sem nome';
         const cidade = mun.cidade || mun.municipio_nome || '';
         const estado = mun.estado ? `- ${mun.estado}` : '';
-        const planoBase = (mun.plano || mun.license_type || 'standard').toString();
-        const planoLabel = planoBase.charAt(0).toUpperCase() + planoBase.slice(1);
+        const planoLabel = formatPlanoLabel(mun.plano || mun.license_type || 'standard');
         const maxUsuarios = mun.max_usuarios ?? mun.max_users ?? 0;
         const usuariosAtuais = mun.usuarios_atuais ?? mun.current_users ?? 0;
         const usagePercent = maxUsuarios > 0 ? Math.round((usuariosAtuais / maxUsuarios) * 100) : 0;
@@ -178,10 +317,18 @@ function updateMunicipiosTable(municipios, total = null) {
     }).join('');
     
     // Atualizar contagem
-    const countEl = document.querySelector('.p-4.border-t p.text-sm');
+    const countEl = document.querySelector('.municipios-footer-count');
     if (countEl) {
-        const totalCount = typeof total === 'number' ? total : municipios.length;
         countEl.textContent = `Mostrando ${municipios.length} de ${totalCount} municípios`;
+    }
+
+    const paginator = document.querySelector('.municipios-footer-pagination');
+    if (paginator) {
+        if (totalCount <= municipios.length) {
+            paginator.classList.add('hidden');
+        } else {
+            paginator.classList.remove('hidden');
+        }
     }
 }
 
@@ -237,6 +384,7 @@ async function createMunicipioSubmit(event) {
     } catch (error) {
         showLoading(false);
         showError(`Erro ao criar município: ${error.message}`);
+        console.error('Erro ao criar município:', error);
     }
 }
 
@@ -244,16 +392,47 @@ async function createMunicipioSubmit(event) {
  * Editar município
  */
 async function editMunicipio(id) {
-    alert(`Editar município ${id} - Em desenvolvimento`)
-    // TODO: Implementar modal de edição
+    try {
+        showLoading(true);
+        const municipio = await loadMunicipioDetails(id);
+        showLoading(false);
+
+        if (!municipio) {
+            showError('Município não encontrado.');
+            return;
+        }
+
+        municipioBeingEdited = municipio;
+        populateEditMunicipioForm(municipio);
+        openEditModal();
+    } catch (error) {
+        showLoading(false);
+        console.error('Erro ao carregar município para edição:', error);
+        showError('Não foi possível carregar os dados do município.');
+    }
 }
 
 /**
  * Ver detalhes do município
  */
 async function viewMunicipio(id) {
-    alert(`Ver detalhes de ${id} - Em desenvolvimento`);
-    // TODO: Implementar modal de visualização
+    try {
+        showLoading(true);
+        const municipio = await loadMunicipioDetails(id);
+        showLoading(false);
+
+        if (!municipio) {
+            showError('Município não encontrado.');
+            return;
+        }
+
+        populateViewMunicipioModal(municipio);
+        openViewModal();
+    } catch (error) {
+        showLoading(false);
+        console.error('Erro ao visualizar município:', error);
+        showError('Não foi possível carregar os dados do município.');
+    }
 }
 
 /**
@@ -276,6 +455,125 @@ async function deleteMunicipio(id) {
     }
 }
 
+async function loadMunicipioDetails(id) {
+    const cached = municipiosData.find(m => (m.municipio_id || m.id) === id)
+        || filteredMunicipios.find(m => (m.municipio_id || m.id) === id);
+
+    try {
+        const response = await API.getMunicipio(id);
+        if (response && response.municipio) {
+            return {
+                ...cached,
+                ...response.municipio,
+                statistics: response.statistics || cached?.statistics
+            };
+        }
+    } catch (error) {
+        console.warn('Falha ao buscar detalhes completos do município:', error);
+    }
+
+    return cached || null;
+}
+
+function populateViewMunicipioModal(mun) {
+    const nomeEl = document.getElementById('view-municipio-nome');
+    const estadoEl = document.getElementById('view-municipio-estado');
+    const planoEl = document.getElementById('view-municipio-plano');
+    const usuariosEl = document.getElementById('view-municipio-usuarios');
+    const licencaEl = document.getElementById('view-municipio-licenca');
+    const statusEl = document.getElementById('view-municipio-status');
+    const createdAtEl = document.getElementById('view-municipio-created-at');
+    const createdByEl = document.getElementById('view-municipio-created-by');
+
+    const nome = getMunicipioName(mun);
+    const status = getMunicipioStatusValue(mun);
+    const maxUsuarios = mun.max_usuarios ?? mun.max_users ?? 0;
+    const usuariosAtuais = mun.usuarios_atuais ?? mun.current_users ?? mun.statistics?.users ?? 0;
+    const licencaDate = mun.data_vencimento_licenca || mun.license_expires;
+
+    if (nomeEl) nomeEl.textContent = nome;
+    if (estadoEl) estadoEl.textContent = mun.estado || '-';
+    if (planoEl) planoEl.textContent = formatPlanoLabel(mun.plano || mun.license_type);
+    if (usuariosEl) usuariosEl.textContent = `${usuariosAtuais}/${maxUsuarios}`;
+    if (licencaEl) licencaEl.textContent = formatDate(licencaDate);
+    if (statusEl) statusEl.textContent = status === 'inativo' ? 'Inativo' : 'Ativo';
+    if (createdAtEl) createdAtEl.textContent = formatDate(mun.created_at);
+    if (createdByEl) createdByEl.textContent = mun.created_by || '-';
+}
+
+function populateEditMunicipioForm(mun) {
+    const form = document.getElementById('editMunicipioForm');
+    if (!form) return;
+
+    const municipioId = mun.municipio_id || mun.id;
+    form.dataset.municipioId = municipioId;
+
+    form.querySelector('[name="nome"]').value = getMunicipioName(mun);
+    form.querySelector('[name="estado"]').value = mun.estado || '';
+    form.querySelector('[name="plano"]').value = getMunicipioPlanoValue(mun) || 'standard';
+    form.querySelector('[name="max_usuarios"]').value = mun.max_usuarios ?? mun.max_users ?? 0;
+    form.querySelector('[name="data_vencimento"]').value = formatInputDate(mun.data_vencimento_licenca || mun.license_expires);
+    form.querySelector('[name="status"]').value = getMunicipioStatusValue(mun);
+
+    const usuariosAtuais = form.querySelector('[name="usuarios_atuais"]');
+    if (usuariosAtuais) {
+        usuariosAtuais.value = mun.usuarios_atuais ?? mun.current_users ?? mun.statistics?.users ?? 0;
+    }
+}
+
+function formatInputDate(dateValue) {
+    if (!dateValue) return '';
+    const date = typeof dateValue === 'object' && dateValue.seconds
+        ? new Date(dateValue.seconds * 1000)
+        : new Date(dateValue);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toISOString().split('T')[0];
+}
+
+async function updateMunicipioSubmit(event) {
+    event.preventDefault();
+    const form = event.target;
+    const municipioId = form.dataset.municipioId;
+
+    if (!municipioId) {
+        showError('Município não identificado para edição.');
+        return;
+    }
+
+    const formData = new FormData(form);
+    const maxUsuarios = parseInt(formData.get('max_usuarios'), 10) || 0;
+    const dataVencimento = formData.get('data_vencimento');
+    const plano = formData.get('plano') || 'standard';
+    const status = formData.get('status') || 'ativo';
+
+    const payload = {
+        nome: formData.get('nome'),
+        municipio_nome: formData.get('nome'),
+        estado: formData.get('estado'),
+        plano,
+        license_type: plano,
+        max_usuarios: maxUsuarios,
+        max_users: maxUsuarios,
+        data_vencimento_licenca: dataVencimento,
+        license_expires: dataVencimento,
+        status
+    };
+
+    try {
+        showLoading(true);
+        await API.updateMunicipio(municipioId, payload);
+        showLoading(false);
+        showSuccess('Município atualizado com sucesso!');
+        closeEditModal();
+        await loadDashboardData();
+    } catch (error) {
+        showLoading(false);
+        console.error('Erro ao atualizar município:', error);
+        showError(`Erro ao atualizar município: ${error.message}`);
+    }
+}
+
+
 // ============================================
 // MODAL
 // ============================================
@@ -286,6 +584,32 @@ function openCreateModal() {
 
 function closeCreateModal() {
     document.getElementById('createModal').classList.add('hidden');
+}
+
+function openViewModal() {
+    const modal = document.getElementById('viewMunicipioModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeViewModal() {
+    const modal = document.getElementById('viewMunicipioModal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function openEditModal() {
+    const modal = document.getElementById('editMunicipioModal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeEditModal() {
+    const modal = document.getElementById('editMunicipioModal');
+    if (modal) modal.classList.add('hidden');
+    const form = document.getElementById('editMunicipioForm');
+    if (form) {
+        form.reset();
+        delete form.dataset.municipioId;
+    }
+    municipioBeingEdited = null;
 }
 
 // ============================================
@@ -326,6 +650,45 @@ document.addEventListener('DOMContentLoaded', () => {
     if (createForm) {
         createForm.addEventListener('submit', createMunicipioSubmit);
     }
+
+    const editForm = document.getElementById('editMunicipioForm');
+    if (editForm) {
+        editForm.addEventListener('submit', updateMunicipioSubmit);
+    }
+
+    const searchInput = document.getElementById('municipio-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', event => {
+            municipioFilters.search = event.target.value;
+            applyMunicipioFilters();
+        });
+    }
+
+    const planoSelect = document.getElementById('municipio-filter-plano');
+    if (planoSelect) {
+        planoSelect.addEventListener('change', event => {
+            municipioFilters.plano = event.target.value;
+            applyMunicipioFilters();
+        });
+    }
+
+    const statusSelect = document.getElementById('municipio-filter-status');
+    if (statusSelect) {
+        statusSelect.addEventListener('change', event => {
+            municipioFilters.status = event.target.value;
+            applyMunicipioFilters();
+        });
+    }
+
+    const sortSelect = document.getElementById('municipio-sort');
+    if (sortSelect) {
+        sortSelect.addEventListener('change', event => {
+            municipioFilters.sort = event.target.value;
+            applyMunicipioFilters();
+        });
+    }
+
+    syncMunicipioFilterControls();
     
     // Carregar dados do dashboard
     loadDashboardData();

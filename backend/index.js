@@ -128,6 +128,50 @@ app.get('/test-firestore', async (req, res) => {
 // ============================================
 
 /**
+ * GET /auth/municipalities
+ * Lista municípios disponíveis para seleção no login
+ */
+app.get('/auth/municipalities', async (req, res) => {
+  try {
+    const snapshot = await db.collection('municipalities').get();
+
+    const municipalities = snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        municipio_id: doc.id,
+        nome: data.nome || data.municipio_nome || data.cidade || doc.id,
+        estado: (data.estado || '').toUpperCase(),
+        license_type: data.license_type || data.plano || 'standard',
+        status: data.status || 'ativo'
+      };
+    }).sort((a, b) => {
+      const stateCompare = a.estado.localeCompare(b.estado, 'pt-BR');
+      if (stateCompare !== 0) return stateCompare;
+      return a.nome.localeCompare(b.nome, 'pt-BR');
+    });
+
+    const states = Array.from(new Set(
+      municipalities
+        .map(item => item.estado)
+        .filter(estado => !!estado)
+    )).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+
+    res.json({
+      municipalities,
+      states
+    });
+  } catch (error) {
+    console.error('Erro ao listar municípios públicos:', error);
+    res.status(500).json({
+      error: {
+        code: 'PUBLIC_MUNICIPALITIES_ERROR',
+        message: 'Erro ao carregar municípios disponíveis'
+      }
+    });
+  }
+});
+
+/**
  * POST /auth/login
  * Login de usuário
  */
