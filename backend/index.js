@@ -567,35 +567,6 @@ app.get('/status', async (req, res) => {
 });
 
 // ============================================
-// TRATAMENTO DE ERROS
-// ============================================
-
-/**
- * 404 - Não encontrado
- */
-app.use((req, res) => {
-  res.status(404).json({
-    error: {
-      code: 'NOT_FOUND',
-      message: `Rota ${req.method} ${req.path} não encontrada`
-    }
-  });
-});
-
-/**
- * Erro global
- */
-app.use((err, req, res, next) => {
-  console.error('Erro não tratado:', err);
-  res.status(500).json({
-    error: {
-      code: 'INTERNAL_ERROR',
-      message: 'Erro interno do servidor'
-    }
-  });
-});
-
-// ============================================
 // MIDDLEWARE - Admin Master Check
 // ============================================
 
@@ -1388,6 +1359,29 @@ app.get('/admin/reports/municipality-stats', authenticateToken, isAdminMaster, a
       }
     });
   }
+});
+
+// ============================================
+// TRATAMENTO DE ERROS (DEVE FICAR AO FINAL)
+// ============================================
+
+app.use((req, res) => {
+  res.status(404).json({
+    error: {
+      code: 'NOT_FOUND',
+      message: `Rota ${req.method} ${req.path} não encontrada`
+    }
+  });
+});
+
+app.use((err, req, res, next) => {
+  console.error('Erro não tratado:', err);
+  res.status(500).json({
+    error: {
+      code: 'INTERNAL_ERROR',
+      message: 'Erro interno do servidor'
+    }
+  });
 });
 
 // ============================================
