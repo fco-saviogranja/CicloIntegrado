@@ -10,21 +10,13 @@ Este documento define os limites e boas práticas para implementação de um mod
 
 ### 1. Rate Limiting (Limitação de Taxa)
 
-#### Por Usuário
+#### Por Usuário (independente do plano)
 ```
 - Requisições por minuto: 10
 - Requisições por hora: 100
-- Requisições por dia: 500
 ```
 
-#### Por Município
-```
-- Requisições por hora: 500
-- Requisições por dia: 5.000
-- Tokens por mês: 1.000.000
-```
-
-#### Por Plano
+#### Por Plano (limites diários e mensais)
 | Plano | Req/dia | Tokens/mês | Contexto |
 |-------|---------|------------|----------|
 | Básico | 100 | 100.000 | 4k tokens |
@@ -426,7 +418,16 @@ CHAT_LIMIT_ENTERPRISE=2000000
 ```javascript
 // Usar Redis para cachear perguntas frequentes
 const redis = require('redis');
-const client = redis.createClient();
+
+// Configurar cliente Redis com variáveis de ambiente
+const client = redis.createClient({
+  host: process.env.REDIS_HOST || 'localhost',
+  port: process.env.REDIS_PORT || 6379,
+  password: process.env.REDIS_PASSWORD,
+  retryStrategy: (times) => Math.min(times * 50, 2000)
+});
+
+client.on('error', (err) => console.error('Redis error:', err));
 
 async function getCachedResponse(messageHash) {
   return await client.get(`chat:${messageHash}`);
