@@ -38,8 +38,26 @@ let receitaData = null;
 let municipioPendingDelete = null;
 let usuarioBeingEdited = null;
 let usuarioPendingDelete = null;
+let auditLogs = [];
+let auditFilters = {
+    entity: 'all',
+    action: 'all',
+    performedBy: ''
+};
+let auditNextCursor = null;
+let auditIsLoading = false;
+let auditHasMore = false;
+let auditInitialized = false;
+const auditSensitiveKeys = ['password', 'senha', 'token', 'access_token', 'refresh_token', 'secret'];
 
-const currentUser = API.getCurrentUser();
+let currentUser = API.getCurrentUser();
+const profileState = {
+    data: null,
+    photoPreview: '',
+    photoToUpload: null,
+    isUploading: false,
+    removePhoto: false
+};
 
 const sectionMetadata = {
     dashboard: {
@@ -64,12 +82,17 @@ const sectionMetadata = {
     },
     configuracoes: {
         title: 'Configurações',
-        subtitle: 'Módulo em desenvolvimento'
+        subtitle: 'Resumo de infraestrutura e auditoria'
+    },
+    'configuracoes-perfil': {
+        title: 'Configurações',
+        subtitle: 'Personalize o seu perfil de administrador'
     }
 };
 
 function switchSection(section) {
     const targetSection = sectionMetadata[section] ? section : 'dashboard';
+    const navActiveSection = targetSection.startsWith('configuracoes') ? 'configuracoes' : targetSection;
 
     Object.keys(sectionMetadata).forEach(key => {
         const container = document.getElementById(`section-${key}`);
@@ -89,7 +112,7 @@ function switchSection(section) {
     document.querySelectorAll('.nav-item').forEach(item => {
         const href = item.getAttribute('href') || '#dashboard';
         const navTarget = href.replace('#', '') || 'dashboard';
-        if (navTarget === targetSection) {
+        if (navTarget === navActiveSection) {
             item.classList.add('bg-primary/10', 'text-primary');
             item.classList.remove('text-text-secondary', 'dark:text-gray-400');
         } else {
@@ -97,6 +120,11 @@ function switchSection(section) {
             item.classList.add('text-text-secondary', 'dark:text-gray-400');
         }
     });
+
+    if (targetSection === 'configuracoes' && !auditInitialized) {
+        auditInitialized = true;
+        loadAuditLogs(true).catch(error => console.error('Erro ao carregar auditoria:', error));
+    }
 }
 
 // ============================================
@@ -161,6 +189,7 @@ async function loadDashboardData() {
         applyUsuarioFilters();
         receitaData = receita;
         updateRevenueChart(receitaData);
+        updateConfigSummary();
         
         showLoading(false);
     } catch (error) {
@@ -234,6 +263,16 @@ function updateDashboardStats(data) {
 
 function normalizeValue(value) {
     return value ? value.toString().trim().toLowerCase() : '';
+}
+
+function escapeHtml(value) {
+    if (value === null || value === undefined) return '';
+    return value.toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
 function getMunicipioName(mun) {
@@ -487,6 +526,38 @@ function formatUserRole(role) {
     return labels[role] || (role ? role.replace(/_/g, ' ') : '-');
 }
 
+function normalizeRoleKey(role) {
+    const raw = normalizeValue(role).replace(/-/g, ' ');
+    if (!raw) {
+        return '';
+    }
+
+    const roleMap = {
+        'admin master': 'admin_master',
+        'admin_master': 'admin_master',
+        'adminmunicipal': 'admin_municipio',
+        'admin municipal': 'admin_municipio',
+        'admin_municipal': 'admin_municipio',
+        'administrador municipal': 'admin_municipio',
+        'gestor de contrato': 'gestor_contrato',
+        'gestor contrato': 'gestor_contrato',
+        'gestor_contrato': 'gestor_contrato',
+        'fiscal de contrato': 'fiscal_contrato',
+        'fiscal contrato': 'fiscal_contrato',
+        'fiscal_contrato': 'fiscal_contrato'
+    };
+
+    const compacted = raw.replace(/\s+/g, '');
+    if (roleMap[raw]) {
+        return roleMap[raw];
+    }
+    if (roleMap[compacted]) {
+        return roleMap[compacted];
+    }
+
+    return raw.replace(/\s+/g, '_');
+}
+
 function formatUserStatusLabel(status) {
     return status === 'inactive' ? 'Inativo' : 'Ativo';
 }
@@ -551,6 +622,7 @@ function applyUsuarioFilters() {
 
     filteredUsuarios = list;
     updateUsuariosTable(filteredUsuarios, usuariosTotalCount);
+    updateUsuariosSummary(filteredUsuarios);
 }
 
 function syncUsuarioFilterControls() {
@@ -689,6 +761,120 @@ function updateUsuariosTable(usuarios, total = null) {
             paginator.classList.remove('hidden');
         }
     }
+}
+
+function updateUsuariosSummary(filteredList = null) {
+    const totalEl = document.getElementById('user-summary-total');
+    if (!totalEl) {
+        return;
+    }
+
+    const users = Array.isArray(usuariosData) ? usuariosData : [];
+    const totalFromDashboard = typeof dashboardData?.total_usuarios === 'number'
+        ? dashboardData.total_usuarios
+        : null;
+    const total = totalFromDashboard ?? users.length;
+
+    let active = 0;
+    let inactive = 0;
+
+    const roleCounts = {
+        admin_master: 0,
+        admin_municipio: 0,
+        gestor_contrato: 0,
+        fiscal_contrato: 0
+    };
+
+    const roleActiveCounts = {
+        admin_master: 0,
+        admin_municipio: 0,
+        gestor_contrato: 0,
+        fiscal_contrato: 0
+    };
+
+    const statusStats = dashboardData?.usuarios_por_status || {};
+    const activeDashboard = statusStats.ativo ?? statusStats.active;
+    const inactiveDashboard = statusStats.inativo ?? statusStats.inactive;
+
+    if (typeof activeDashboard === 'number' || typeof inactiveDashboard === 'number') {
+        active = typeof activeDashboard === 'number' ? activeDashboard : active;
+        inactive = typeof inactiveDashboard === 'number' ? inactiveDashboard : inactive;
+    }
+
+    users.forEach(usuario => {
+        const status = normalizeUserStatus(usuario.status);
+        if (typeof activeDashboard !== 'number' && typeof inactiveDashboard !== 'number') {
+            if (status === 'inactive') {
+                inactive += 1;
+            } else {
+                active += 1;
+            }
+        }
+
+        const roleKey = normalizeRoleKey(usuario.role);
+        if (Object.prototype.hasOwnProperty.call(roleCounts, roleKey)) {
+            roleCounts[roleKey] += 1;
+            if (status !== 'inactive') {
+                roleActiveCounts[roleKey] += 1;
+            }
+        }
+    });
+
+    totalEl.textContent = total;
+
+    const statusEl = document.getElementById('user-summary-status');
+    if (statusEl) {
+        statusEl.textContent = `Ativos: ${active} • Inativos: ${inactive}`;
+    }
+
+    const filteredCount = Array.isArray(filteredList) ? filteredList.length : total;
+    const filteredEl = document.getElementById('user-summary-filtered');
+    if (filteredEl) {
+        filteredEl.textContent = `Filtrados: ${filteredCount}`;
+    }
+
+    const progressEl = document.getElementById('user-summary-total-progress');
+    if (progressEl) {
+        const percent = total > 0 ? Math.round((active / total) * 100) : 0;
+        progressEl.style.width = `${percent}%`;
+    }
+
+    const roleIdMap = {
+        admin_master: 'admin-master',
+        admin_municipio: 'admin-municipio',
+        gestor_contrato: 'gestor-contrato',
+        fiscal_contrato: 'fiscal-contrato'
+    };
+
+    const roleStats = dashboardData?.usuarios_por_perfil || {};
+    Object.entries(roleStats).forEach(([role, count]) => {
+        const roleKey = normalizeRoleKey(role);
+        if (Object.prototype.hasOwnProperty.call(roleCounts, roleKey)) {
+            roleCounts[roleKey] = count;
+        }
+    });
+
+    Object.keys(roleIdMap).forEach(role => {
+        const idSuffix = roleIdMap[role];
+        const count = roleCounts[role] || 0;
+        const activeCount = roleActiveCounts[role] || 0;
+        const percent = total > 0 ? Math.round((count / total) * 100) : 0;
+
+        const countEl = document.getElementById(`user-summary-role-${idSuffix}`);
+        if (countEl) {
+            countEl.textContent = count;
+        }
+
+        const shareEl = document.getElementById(`user-summary-role-${idSuffix}-share`);
+        if (shareEl) {
+            shareEl.textContent = `Ativos: ${activeCount} • ${percent}% do total`;
+        }
+
+        const roleProgress = document.getElementById(`user-summary-role-${idSuffix}-progress`);
+        if (roleProgress) {
+            roleProgress.style.width = `${percent}%`;
+        }
+    });
 }
 
 function populateUserMunicipioSelects() {
@@ -1561,6 +1747,668 @@ async function confirmDeleteUsuario() {
 }
 
 // ============================================
+// CONFIGURAÇÕES E AUDITORIA
+// ============================================
+
+function updateConfigSummary() {
+    const userNameEl = document.getElementById('config-current-user-name');
+    const userEmailEl = document.getElementById('config-current-user-email');
+    const userRoleEl = document.getElementById('config-current-user-role');
+    const backendUrlEl = document.getElementById('config-backend-url');
+    const lastSyncEl = document.getElementById('config-last-sync');
+    const totalMunicipiosEl = document.getElementById('config-total-municipios');
+    const totalUsuariosEl = document.getElementById('config-total-usuarios');
+    const totalContratosEl = document.getElementById('config-total-contratos');
+    const themeStatusEl = document.getElementById('config-theme-status');
+
+    if (userNameEl) userNameEl.textContent = currentUser?.name || currentUser?.email || '-';
+    if (userEmailEl) userEmailEl.textContent = currentUser?.email || '-';
+    if (userRoleEl) userRoleEl.textContent = formatUserRole(currentUser?.role) || '-';
+    if (backendUrlEl) backendUrlEl.textContent = API.baseURL || '-';
+
+    const lastSyncValue = dashboardData?.updated_at ? formatDateTime(dashboardData.updated_at) : '';
+    if (lastSyncEl) lastSyncEl.textContent = lastSyncValue || 'Ainda não sincronizado nesta sessão';
+
+    if (totalMunicipiosEl) {
+        const totalMun = typeof dashboardData?.total_municipios === 'number'
+            ? dashboardData.total_municipios
+            : municipiosTotalCount;
+        totalMunicipiosEl.textContent = totalMun ?? 0;
+    }
+
+    if (totalUsuariosEl) {
+        const totalUser = typeof dashboardData?.total_usuarios === 'number'
+            ? dashboardData.total_usuarios
+            : usuariosTotalCount;
+        totalUsuariosEl.textContent = totalUser ?? 0;
+    }
+
+    if (totalContratosEl) {
+        const totalContratos = typeof dashboardData?.contratos_totais === 'number'
+            ? dashboardData.contratos_totais
+            : dashboardData?.contratos_total
+                ?? 0;
+        totalContratosEl.textContent = totalContratos;
+    }
+
+    if (themeStatusEl) {
+        themeStatusEl.textContent = document.documentElement.classList.contains('dark') ? 'Escuro' : 'Claro';
+    }
+}
+
+function refreshHeaderUser() {
+    const headerName = document.getElementById('header-user-name');
+    const headerEmail = document.getElementById('header-user-email');
+    const avatarImg = document.getElementById('header-user-avatar');
+    const avatarIcon = document.getElementById('header-user-icon');
+
+    if (headerName) {
+        headerName.textContent = currentUser?.name || currentUser?.email || 'Admin Master';
+    }
+
+    if (headerEmail) {
+        headerEmail.textContent = currentUser?.email || '-';
+    }
+
+    if (avatarImg) {
+        const photoUrl = currentUser?.photo_url;
+        if (photoUrl) {
+            avatarImg.src = photoUrl;
+            avatarImg.classList.remove('hidden');
+            if (avatarIcon) avatarIcon.classList.add('hidden');
+        } else {
+            avatarImg.src = '';
+            avatarImg.classList.add('hidden');
+            if (avatarIcon) avatarIcon.classList.remove('hidden');
+        }
+    }
+}
+
+function setCurrentUserState(partialUser) {
+    if (!partialUser) {
+        return;
+    }
+
+    currentUser = {
+        ...(currentUser || {}),
+        ...partialUser
+    };
+
+    if (!currentUser.id && partialUser.id) {
+        currentUser.id = partialUser.id;
+    }
+
+    API.setCurrentUser(currentUser);
+    updateConfigSummary();
+    refreshHeaderUser();
+}
+
+function updateProfilePhotoActions() {
+    const removeBtn = document.getElementById('profile-photo-remove-btn');
+    if (!removeBtn) return;
+
+    const label = removeBtn.querySelector('.profile-remove-label');
+    const icon = removeBtn.querySelector('.material-symbols-outlined');
+
+    const hasStoredPhoto = Boolean(profileState.data?.photo_url);
+    const hasNewPhoto = Boolean(profileState.photoToUpload);
+    const removalPending = profileState.removePhoto && hasStoredPhoto && !hasNewPhoto;
+
+    const shouldShow = hasStoredPhoto || hasNewPhoto || removalPending;
+    removeBtn.classList.toggle('hidden', !shouldShow);
+
+    if (!shouldShow) {
+        return;
+    }
+
+    if (hasNewPhoto) {
+        if (icon) icon.textContent = 'close';
+        if (label) label.textContent = 'Descartar imagem selecionada';
+    } else if (removalPending) {
+        if (icon) icon.textContent = 'undo';
+        if (label) label.textContent = 'Desfazer remoção';
+    } else {
+        if (icon) icon.textContent = 'delete';
+        if (label) label.textContent = 'Remover foto atual';
+    }
+}
+
+function setProfilePhotoPreview(url) {
+    const previewImg = document.getElementById('profile-photo-preview');
+    const placeholder = document.getElementById('profile-photo-placeholder');
+
+    profileState.photoPreview = url || '';
+
+    if (previewImg && placeholder) {
+        if (url) {
+            previewImg.src = url;
+            previewImg.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+        } else {
+            previewImg.src = '';
+            previewImg.classList.add('hidden');
+            placeholder.classList.remove('hidden');
+        }
+    }
+
+    updateProfilePhotoActions();
+}
+
+function toggleProfilePhotoLoading(isLoading) {
+    profileState.isUploading = Boolean(isLoading);
+    const overlay = document.getElementById('profile-photo-loading');
+    const uploadBtn = document.getElementById('profile-photo-upload-btn');
+    const removeBtn = document.getElementById('profile-photo-remove-btn');
+    if (overlay) overlay.classList.toggle('hidden', !isLoading);
+    if (uploadBtn) uploadBtn.disabled = isLoading;
+    if (removeBtn) removeBtn.disabled = isLoading;
+}
+
+function setProfileSavingState(isSaving) {
+    const saveBtn = document.getElementById('profile-save-btn');
+    if (!saveBtn) return;
+
+    saveBtn.disabled = isSaving;
+    saveBtn.classList.toggle('opacity-70', isSaving);
+
+    const icon = saveBtn.querySelector('.material-symbols-outlined');
+    if (icon) {
+        icon.textContent = isSaving ? 'hourglass_top' : 'save';
+    }
+
+    const label = saveBtn.querySelector('.profile-save-label');
+    if (label) {
+        label.textContent = isSaving ? 'Salvando...' : 'Salvar alterações';
+    }
+}
+
+async function loadProfileSettings() {
+    const form = document.getElementById('profile-settings-form');
+    const nameInput = document.getElementById('profile-name');
+    const emailInput = document.getElementById('profile-email');
+    const phoneInput = document.getElementById('profile-phone');
+    const cpfInput = document.getElementById('profile-cpf');
+    const photoInput = document.getElementById('profile-photo-input');
+
+    if (!form || !nameInput || !emailInput || !phoneInput || !cpfInput) {
+        return;
+    }
+
+    if (!currentUser || !currentUser.id) {
+        showError('Usuário autenticado não encontrado. Faça login novamente.');
+        return;
+    }
+
+    try {
+        showLoading(true);
+        const response = await API.getUsuario(currentUser.id);
+        const usuario = response?.usuario || {};
+
+        const normalized = {
+            id: usuario.id || currentUser.id,
+            name: usuario.name || usuario.nome || currentUser.name || '',
+            email: usuario.email || currentUser.email || '',
+            phone: usuario.phone || '',
+            cpf: usuario.cpf || '',
+            role: usuario.role || currentUser.role || 'admin_master',
+            photo_url: usuario.photo_url || ''
+        };
+
+        profileState.data = normalized;
+        profileState.photoToUpload = null;
+        profileState.removePhoto = false;
+
+        nameInput.value = normalized.name || '';
+        emailInput.value = normalized.email || '';
+        phoneInput.value = normalized.phone || '';
+        cpfInput.value = normalized.cpf || '';
+
+        if (photoInput) {
+            photoInput.value = '';
+        }
+
+        setProfilePhotoPreview(normalized.photo_url || '');
+    } catch (error) {
+        const message = error?.message || 'Erro ao carregar dados do perfil.';
+        showError(message);
+    } finally {
+        showLoading(false);
+    }
+}
+
+function openProfileSettings() {
+    switchSection('configuracoes-perfil');
+    loadProfileSettings();
+}
+
+function resetProfileFormToCurrent() {
+    if (profileState.data) {
+        setProfilePhotoPreview(profileState.data.photo_url || '');
+    }
+    profileState.photoToUpload = null;
+    profileState.removePhoto = false;
+    const photoInput = document.getElementById('profile-photo-input');
+    if (photoInput) {
+        photoInput.value = '';
+    }
+    if (profileState.data) {
+        const nameInput = document.getElementById('profile-name');
+        const phoneInput = document.getElementById('profile-phone');
+        const cpfInput = document.getElementById('profile-cpf');
+        const emailInput = document.getElementById('profile-email');
+        if (nameInput) nameInput.value = profileState.data.name || '';
+        if (phoneInput) phoneInput.value = profileState.data.phone || '';
+        if (cpfInput) cpfInput.value = profileState.data.cpf || '';
+        if (emailInput) emailInput.value = profileState.data.email || '';
+    }
+}
+
+function handleProfilePhotoSelection(event) {
+    const file = event?.target?.files && event.target.files[0];
+    if (!file) {
+        return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+        showError('Formato de imagem não suportado. Utilize JPG, PNG ou WEBP.');
+        event.target.value = '';
+        return;
+    }
+
+    if (file.size > 4 * 1024 * 1024) {
+        showError('A imagem deve ter até 4MB.');
+        event.target.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        profileState.photoToUpload = reader.result;
+        profileState.removePhoto = false;
+        setProfilePhotoPreview(profileState.photoToUpload);
+    };
+    reader.onerror = () => {
+        showError('Não foi possível ler o arquivo selecionado.');
+        event.target.value = '';
+    };
+    reader.readAsDataURL(file);
+}
+
+function handleProfilePhotoRemove() {
+    const photoInput = document.getElementById('profile-photo-input');
+    if (photoInput) {
+        photoInput.value = '';
+    }
+
+    const hasNewPhoto = Boolean(profileState.photoToUpload);
+    const hasStoredPhoto = Boolean(profileState.data?.photo_url);
+
+    if (hasNewPhoto) {
+        profileState.photoToUpload = null;
+        setProfilePhotoPreview(profileState.data?.photo_url || '');
+        profileState.removePhoto = false;
+        return;
+    }
+
+    if (profileState.removePhoto && hasStoredPhoto) {
+        profileState.removePhoto = false;
+        setProfilePhotoPreview(profileState.data.photo_url);
+        return;
+    }
+
+    if (hasStoredPhoto) {
+        profileState.removePhoto = true;
+        setProfilePhotoPreview('');
+        return;
+    }
+
+    profileState.photoToUpload = null;
+    profileState.removePhoto = false;
+    setProfilePhotoPreview('');
+}
+
+async function handleProfileFormSubmit(event) {
+    event.preventDefault();
+
+    if (!profileState.data || !profileState.data.id) {
+        showError('Não foi possível identificar o usuário logado.');
+        return;
+    }
+
+    const nameInput = document.getElementById('profile-name');
+    const phoneInput = document.getElementById('profile-phone');
+    const cpfInput = document.getElementById('profile-cpf');
+
+    if (!nameInput || !phoneInput || !cpfInput) {
+        showError('Formulário inválido. Tente novamente.');
+        return;
+    }
+
+    const trimmedName = nameInput.value.trim();
+    if (!trimmedName) {
+        showError('Informe o nome completo.');
+        return;
+    }
+
+    const updates = {};
+    if (trimmedName !== (profileState.data.name || '')) {
+        updates.name = trimmedName;
+    }
+
+    const trimmedPhone = phoneInput.value.trim();
+    if (trimmedPhone !== (profileState.data.phone || '')) {
+        updates.phone = trimmedPhone;
+    }
+
+    const trimmedCpf = cpfInput.value.trim();
+    if (trimmedCpf !== (profileState.data.cpf || '')) {
+        updates.cpf = trimmedCpf;
+    }
+
+    let newPhotoUrl = profileState.data.photo_url || '';
+
+    try {
+        setProfileSavingState(true);
+
+        if (profileState.photoToUpload) {
+            toggleProfilePhotoLoading(true);
+            const uploadResponse = await API.uploadUserPhoto(profileState.data.id, profileState.photoToUpload);
+            newPhotoUrl = uploadResponse?.photo_url || '';
+            profileState.photoToUpload = null;
+            profileState.removePhoto = false;
+            profileState.data.photo_url = newPhotoUrl;
+        } else if (profileState.removePhoto && profileState.data.photo_url) {
+            toggleProfilePhotoLoading(true);
+            await API.deleteUserPhoto(profileState.data.id);
+            newPhotoUrl = '';
+            profileState.data.photo_url = '';
+            profileState.removePhoto = false;
+        }
+
+        toggleProfilePhotoLoading(false);
+
+        if (Object.keys(updates).length > 0) {
+            await API.updateUsuario(profileState.data.id, updates);
+            profileState.data = {
+                ...profileState.data,
+                ...updates
+            };
+        }
+
+        profileState.data = {
+            ...profileState.data,
+            name: trimmedName,
+            phone: trimmedPhone,
+            cpf: trimmedCpf,
+            photo_url: newPhotoUrl
+        };
+
+        setCurrentUserState({
+            id: profileState.data.id,
+            name: profileState.data.name || trimmedName,
+            email: profileState.data.email || currentUser?.email,
+            role: profileState.data.role || currentUser?.role,
+            photo_url: newPhotoUrl
+        });
+
+        setProfilePhotoPreview(newPhotoUrl);
+
+        showSuccess('Perfil atualizado com sucesso!');
+        profileState.photoToUpload = null;
+    } catch (error) {
+        toggleProfilePhotoLoading(false);
+        const message = error?.message || 'Erro ao salvar mudanças do perfil.';
+        showError(message);
+    } finally {
+        setProfileSavingState(false);
+    }
+}
+
+function formatAuditEntity(entity) {
+    const map = {
+        municipality: 'Município',
+        user: 'Usuário'
+    };
+    return map[entity] || (entity ? entity : 'Entidade desconhecida');
+}
+
+function formatAuditAction(action) {
+    const map = {
+        create: 'Criação',
+        update: 'Atualização',
+        delete: 'Exclusão',
+        reset_password: 'Reset de senha'
+    };
+    return map[action] || (action ? action : 'Ação desconhecida');
+}
+
+function formatAuditValue(value) {
+    if (value === null || value === undefined) return '';
+    if (typeof value === 'object') {
+        try {
+            return JSON.stringify(value);
+        } catch (error) {
+            return '[objeto]';
+        }
+    }
+    return value.toString();
+}
+
+function summarizeAuditChanges(log) {
+    if (!log) return '';
+    const before = log.before || {};
+    const after = log.after || {};
+    const keys = new Set([
+        ...Object.keys(before || {}),
+        ...Object.keys(after || {})
+    ]);
+
+    const changed = [];
+    keys.forEach(key => {
+        const beforeVal = formatAuditValue(before[key]);
+        const afterVal = formatAuditValue(after[key]);
+        if (beforeVal !== afterVal) {
+            changed.push(key);
+        }
+    });
+
+    if (changed.length === 0) {
+        if (log.action === 'create') return 'Registro criado';
+        if (log.action === 'delete') return 'Registro removido';
+        if (log.action === 'reset_password') return 'Senha redefinida';
+        return 'Atualização sem campos modificados detectados';
+    }
+
+    return `Campos alterados: ${changed.slice(0, 4).join(', ')}${changed.length > 4 ? ` +${changed.length - 4}` : ''}`;
+}
+
+function summarizeAuditMetadata(metadata) {
+    if (!metadata || typeof metadata !== 'object') {
+        return '';
+    }
+
+    const entries = Object.entries(metadata)
+        .filter(([key]) => !auditSensitiveKeys.includes(key))
+        .slice(0, 3)
+        .map(([key, value]) => `${key}: ${formatAuditValue(value)}`);
+
+    return entries.join(' • ');
+}
+
+function renderAuditLogs() {
+    const tbody = document.getElementById('audit-logs-table');
+    const emptyMessage = document.getElementById('audit-empty-message');
+    const loadMoreBtn = document.getElementById('audit-load-more');
+
+    if (!tbody) return;
+
+    if (!Array.isArray(auditLogs) || auditLogs.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="px-6 py-8 text-center text-text-secondary dark:text-gray-400">
+                    Nenhum registro de auditoria encontrado para os filtros atuais.
+                </td>
+            </tr>
+        `;
+        if (emptyMessage) emptyMessage.classList.remove('hidden');
+    } else {
+        const rows = auditLogs.map(log => {
+            const actionLabel = escapeHtml(formatAuditAction(log.action));
+            const entityLabel = escapeHtml(formatAuditEntity(log.entity_type));
+            const entityId = log.entity_id ? ` • ID: ${escapeHtml(log.entity_id)}` : '';
+            const actorName = escapeHtml(log.performed_by || '-');
+            const actorRole = escapeHtml(formatUserRole(log.performed_by_role) || '-');
+            const createdAt = escapeHtml(formatDateTime(log.created_at) || '-');
+            const changeSummary = escapeHtml(summarizeAuditChanges(log));
+            const metadataSummary = summarizeAuditMetadata(log.metadata);
+
+            const metadataHtml = metadataSummary
+                ? `<p class="text-xs text-text-secondary/80 dark:text-gray-500 mt-1">${escapeHtml(metadataSummary)}</p>`
+                : '';
+
+            return `
+                <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/40">
+                    <td class="px-6 py-4 align-top">
+                        <p class="font-medium">${actionLabel}</p>
+                        <p class="text-xs text-text-secondary dark:text-gray-400">${entityLabel}${entityId}</p>
+                    </td>
+                    <td class="px-6 py-4 align-top">
+                        <p class="font-medium">${actorName}</p>
+                        <p class="text-xs text-text-secondary dark:text-gray-400">${actorRole}</p>
+                    </td>
+                    <td class="px-6 py-4 align-top whitespace-nowrap">${createdAt}</td>
+                    <td class="px-6 py-4 align-top" colspan="2">
+                        <p class="text-sm">${changeSummary}</p>
+                        ${metadataHtml}
+                    </td>
+                </tr>
+            `;
+        }).join('');
+
+        tbody.innerHTML = rows;
+        if (emptyMessage) emptyMessage.classList.add('hidden');
+    }
+
+    if (loadMoreBtn) {
+        if (auditHasMore) {
+            loadMoreBtn.classList.remove('hidden');
+            loadMoreBtn.disabled = auditIsLoading;
+            loadMoreBtn.textContent = auditIsLoading ? 'Carregando...' : 'Carregar mais';
+        } else {
+            loadMoreBtn.classList.add('hidden');
+        }
+    }
+
+    updateAuditSummaryInfo();
+}
+
+function setAuditLoadingState(isLoading) {
+    auditIsLoading = isLoading;
+    const indicator = document.getElementById('audit-loading-indicator');
+    const loadMoreBtn = document.getElementById('audit-load-more');
+
+    if (indicator) {
+        indicator.classList.toggle('hidden', !isLoading);
+    }
+
+    if (loadMoreBtn && auditHasMore) {
+        loadMoreBtn.disabled = isLoading;
+        loadMoreBtn.textContent = isLoading ? 'Carregando...' : 'Carregar mais';
+    }
+}
+
+function updateAuditSummaryInfo() {
+    const totalEl = document.getElementById('config-audit-total');
+    const lastUpdateEl = document.getElementById('config-audit-last-update');
+
+    if (totalEl) totalEl.textContent = auditLogs.length;
+
+    if (lastUpdateEl) {
+        if (auditLogs.length === 0) {
+            lastUpdateEl.textContent = 'Ainda sem registros coletados';
+        } else {
+            lastUpdateEl.textContent = formatDateTime(auditLogs[0].created_at) || '-';
+        }
+    }
+}
+
+async function loadAuditLogs(reset = false) {
+    if (auditIsLoading) return;
+
+    if (reset) {
+        auditNextCursor = null;
+        auditHasMore = false;
+        auditLogs = [];
+        renderAuditLogs();
+    }
+
+    setAuditLoadingState(true);
+
+    try {
+        const params = {
+            limit: 25,
+            entity_type: auditFilters.entity,
+            action: auditFilters.action
+        };
+
+        if (auditFilters.performedBy) {
+            params.performed_by = auditFilters.performedBy;
+        }
+
+        if (!reset && auditNextCursor) {
+            params.cursor = auditNextCursor;
+        }
+
+        const response = await API.getAuditLogs(params);
+        const logs = Array.isArray(response?.logs) ? response.logs : [];
+
+        auditHasMore = Boolean(response?.next_cursor);
+        auditNextCursor = response?.next_cursor || null;
+        auditLogs = reset ? logs : [...auditLogs, ...logs];
+
+        renderAuditLogs();
+    } catch (error) {
+        console.error('Erro ao carregar logs de auditoria:', error);
+        showError(error?.message || 'Erro ao carregar logs de auditoria');
+    } finally {
+        setAuditLoadingState(false);
+    }
+}
+
+function resetAuditFilters() {
+    auditFilters = {
+        entity: 'all',
+        action: 'all',
+        performedBy: ''
+    };
+
+    const entitySelect = document.getElementById('audit-filter-entity');
+    const actionSelect = document.getElementById('audit-filter-action');
+    const performedInput = document.getElementById('audit-filter-performed');
+
+    if (entitySelect) entitySelect.value = 'all';
+    if (actionSelect) actionSelect.value = 'all';
+    if (performedInput) performedInput.value = '';
+
+    loadAuditLogs(true);
+}
+
+function syncConfigThemeToggle() {
+    const btn = document.getElementById('config-theme-toggle');
+    const themeStatusEl = document.getElementById('config-theme-status');
+    const isDark = document.documentElement.classList.contains('dark');
+
+    if (btn) {
+        btn.textContent = isDark ? 'Alternar para modo claro' : 'Alternar para modo escuro';
+    }
+
+    if (themeStatusEl) {
+        themeStatusEl.textContent = isDark ? 'Escuro' : 'Claro';
+    }
+}
+
+// ============================================
 // TEMA
 // ============================================
 
@@ -1568,6 +2416,7 @@ function toggleDarkMode() {
     document.documentElement.classList.toggle('dark');
     const isDark = document.documentElement.classList.contains('dark');
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    syncConfigThemeToggle();
 }
 
 // Initialize theme
@@ -1588,6 +2437,49 @@ document.addEventListener('DOMContentLoaded', () => {
             switchSection(target);
         });
     });
+
+    const profileOpenBtn = document.getElementById('config-profile-open');
+    if (profileOpenBtn) {
+        profileOpenBtn.addEventListener('click', () => {
+            openProfileSettings();
+        });
+    }
+
+    const profileBackBtn = document.getElementById('config-profile-back');
+    if (profileBackBtn) {
+        profileBackBtn.addEventListener('click', () => {
+            switchSection('configuracoes');
+        });
+    }
+
+    const profileCancelBtn = document.getElementById('profile-cancel-btn');
+    if (profileCancelBtn) {
+        profileCancelBtn.addEventListener('click', () => {
+            resetProfileFormToCurrent();
+        });
+    }
+
+    const profileForm = document.getElementById('profile-settings-form');
+    if (profileForm) {
+        profileForm.addEventListener('submit', handleProfileFormSubmit);
+    }
+
+    const profilePhotoUploadBtn = document.getElementById('profile-photo-upload-btn');
+    const profilePhotoInput = document.getElementById('profile-photo-input');
+    if (profilePhotoUploadBtn && profilePhotoInput) {
+        profilePhotoUploadBtn.addEventListener('click', () => {
+            profilePhotoInput.click();
+        });
+    }
+
+    if (profilePhotoInput) {
+        profilePhotoInput.addEventListener('change', handleProfilePhotoSelection);
+    }
+
+    const profilePhotoRemoveBtn = document.getElementById('profile-photo-remove-btn');
+    if (profilePhotoRemoveBtn) {
+        profilePhotoRemoveBtn.addEventListener('click', handleProfilePhotoRemove);
+    }
     
     // Conectar form de criar município
     const createForm = document.querySelector('#createModal form');
@@ -1693,8 +2585,61 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    const auditEntitySelect = document.getElementById('audit-filter-entity');
+    if (auditEntitySelect) {
+        auditEntitySelect.addEventListener('change', event => {
+            auditFilters.entity = event.target.value;
+            loadAuditLogs(true);
+        });
+    }
+
+    const auditActionSelect = document.getElementById('audit-filter-action');
+    if (auditActionSelect) {
+        auditActionSelect.addEventListener('change', event => {
+            auditFilters.action = event.target.value;
+            loadAuditLogs(true);
+        });
+    }
+
+    const auditPerformedInput = document.getElementById('audit-filter-performed');
+    if (auditPerformedInput) {
+        auditPerformedInput.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                auditFilters.performedBy = event.target.value.trim();
+                loadAuditLogs(true);
+            }
+        });
+    }
+
+    const auditApplyBtn = document.getElementById('audit-filter-apply');
+    if (auditApplyBtn) {
+        auditApplyBtn.addEventListener('click', () => {
+            const performedInput = document.getElementById('audit-filter-performed');
+            auditFilters.performedBy = performedInput ? performedInput.value.trim() : '';
+            loadAuditLogs(true);
+        });
+    }
+
+    const auditClearBtn = document.getElementById('audit-filter-clear');
+    if (auditClearBtn) {
+        auditClearBtn.addEventListener('click', () => {
+            resetAuditFilters();
+        });
+    }
+
+    const auditLoadMoreBtn = document.getElementById('audit-load-more');
+    if (auditLoadMoreBtn) {
+        auditLoadMoreBtn.addEventListener('click', () => {
+            loadAuditLogs(false);
+        });
+    }
+
     syncMunicipioFilterControls();
     syncUsuarioFilterControls();
+    syncConfigThemeToggle();
+    refreshHeaderUser();
+    updateConfigSummary();
 
     switchSection('dashboard');
     

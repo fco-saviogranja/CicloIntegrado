@@ -74,6 +74,17 @@ const API = {
     const userStr = localStorage.getItem('user');
     return userStr ? JSON.parse(userStr) : null;
   },
+
+  /**
+   * Atualiza a cópia local do usuário autenticado
+   */
+  setCurrentUser(user) {
+    if (!user) {
+      localStorage.removeItem('user');
+      return;
+    }
+    localStorage.setItem('user', JSON.stringify(user));
+  },
   
   /**
    * Verifica se o usuário é Admin Master
@@ -277,12 +288,46 @@ const API = {
       method: 'DELETE'
     });
   },
+
+  /**
+   * Faz upload da foto de perfil do usuário logado
+   */
+  async uploadUserPhoto(id, imageBase64) {
+    return this.request(`/admin/users/${id}/photo`, {
+      method: 'POST',
+      body: JSON.stringify({ image_base64: imageBase64 })
+    });
+  },
+
+  /**
+   * Remove a foto de perfil do usuário logado
+   */
+  async deleteUserPhoto(id) {
+    return this.request(`/admin/users/${id}/photo`, {
+      method: 'DELETE'
+    });
+  },
   
   /**
    * Obtém estatísticas de usuários
    */
   async getUsuariosStats() {
     return this.request('/admin/users/statistics');
+  },
+
+  /**
+   * Obtém logs de auditoria
+   */
+  async getAuditLogs(filters = {}) {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '' && value !== 'all') {
+        params.set(key, value);
+      }
+    });
+
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return this.request(`/admin/audit-logs${suffix}`);
   },
   
   // ============================================

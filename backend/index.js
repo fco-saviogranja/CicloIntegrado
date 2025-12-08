@@ -7,8 +7,10 @@
 const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
+require('firebase-admin/storage');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 // Inicializar Express
 const app = express();
@@ -28,13 +30,37 @@ app.use(cors({
   credentials: true
 }));
 
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
 // Inicializar Firebase Admin SDK
+// Resolve the Firebase project ID across Cloud Functions and local environments.
+const resolveProjectId = () => {
+  if (process.env.GCP_PROJECT_ID) return process.env.GCP_PROJECT_ID;
+  if (process.env.GCLOUD_PROJECT) return process.env.GCLOUD_PROJECT;
+  if (process.env.GCP_PROJECT) return process.env.GCP_PROJECT;
+  if (process.env.FIREBASE_CONFIG) {
+    try {
+      const parsedConfig = JSON.parse(process.env.FIREBASE_CONFIG);
+      if (parsedConfig && parsedConfig.projectId) {
+        return parsedConfig.projectId;
+      }
+    } catch (configError) {
+      console.error('Erro ao analisar FIREBASE_CONFIG:', configError);
+    }
+  }
+  return 'scenic-lane-480423-t5';
+};
+
+const projectId = resolveProjectId();
+const defaultBucketName = process.env.STORAGE_BUCKET
+  || process.env.FIREBASE_STORAGE_BUCKET
+  || `${projectId}.appspot.com`;
+
 if (!admin.apps.length) {
   admin.initializeApp({
-    projectId: process.env.GCP_PROJECT_ID || 'scenic-lane-480423-t5',
+    projectId,
+    storageBucket: defaultBucketName,
   });
 }
 
@@ -44,6 +70,127 @@ db.settings({
   databaseId: '(default)'
 });
 const auth = admin.auth();
+const storage = admin.storage();
+// Ensure uploads target the expected default bucket when running on Cloud Functions.
+const bucket = storage.bucket(admin.app().options.storageBucket || defaultBucketName);
+
+// ============================================
+// AUDITORIA
+// ============================================
+
+const AUDIT_COLLECTION = 'audit_logs';
+const AUDIT_SENSITIVE_FIELDS = ['password', 'senha', 'token', 'access_token', 'refresh_token', 'secret'];
+
+function sanitizeAuditValue(value) {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  if (value instanceof admin.firestore.Timestamp) {
+    return value.toDate().toISOString();
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(item => sanitizeAuditValue(item));
+  }
+
+  if (typeof value === 'object') {
+    const result = {};
+    Object.keys(value).forEach(key => {
+      if (AUDIT_SENSITIVE_FIELDS.includes(key)) {
+        result[key] = '[REDACTED]';
+      } else {
+        result[key] = sanitizeAuditValue(value[key]);
+      }
+    });
+    return result;
+  }
+
+  return value;
+}
+
+async function logAuditEvent({ entityType, entityId, action, performedBy, performedById, performedByRole, before, after, metadata }) {
+  try {
+    const entry = {
+      entity_type: entityType,
+      entity_id: entityId || null,
+      action,
+      performed_by: performedBy || null,
+      performed_by_id: performedById || null,
+      performed_by_role: performedByRole || null,
+      before: before ? sanitizeAuditValue(before) : null,
+      after: after ? sanitizeAuditValue(after) : null,
+      metadata: metadata ? sanitizeAuditValue(metadata) : null,
+      created_at: admin.firestore.FieldValue.serverTimestamp()
+    };
+
+    await db.collection(AUDIT_COLLECTION).add(entry);
+  } catch (auditError) {
+    console.error('Audit log error:', auditError);
+  }
+}
+
+// ============================================
+// PERFIL E ARMAZENAMENTO
+// ============================================
+
+function parseImageDataUrl(dataUrl) {
+  if (!dataUrl || typeof dataUrl !== 'string') {
+    return null;
+  }
+
+  const matches = dataUrl.match(/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/);
+  if (!matches || matches.length !== 3) {
+    return null;
+  }
+
+  const mimeType = matches[1];
+  const base64Data = matches[2];
+
+  const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'];
+  if (!allowedMimeTypes.includes(mimeType)) {
+    throw new Error('UNSUPPORTED_IMAGE_TYPE');
+  }
+
+  const buffer = Buffer.from(base64Data, 'base64');
+  const sizeInMb = buffer.length / (1024 * 1024);
+  if (Number.isNaN(sizeInMb) || sizeInMb <= 0) {
+    return null;
+  }
+
+  if (sizeInMb > 4) {
+    throw new Error('IMAGE_TOO_LARGE');
+  }
+
+  let extension = 'png';
+  if (mimeType === 'image/jpeg') extension = 'jpg';
+  if (mimeType === 'image/webp') extension = 'webp';
+  if (mimeType === 'image/png') extension = 'png';
+
+  return {
+    mimeType,
+    buffer,
+    extension
+  };
+}
+
+async function deleteStorageFileByUrl(fileUrl) {
+  if (!fileUrl || typeof fileUrl !== 'string') {
+    return;
+  }
+
+  try {
+    const publicPrefix = `https://storage.googleapis.com/${bucket.name}/`;
+    if (fileUrl.startsWith(publicPrefix)) {
+      const filePath = fileUrl.substring(publicPrefix.length);
+      if (filePath) {
+        await bucket.file(filePath).delete({ ignoreNotFound: true });
+      }
+    }
+  } catch (deleteError) {
+    console.error('Erro ao remover arquivo antigo do Storage:', deleteError);
+  }
+}
 
 // ============================================
 // MIDDLEWARE
@@ -230,7 +377,8 @@ app.post('/auth/login', async (req, res) => {
         email: userData.email,
         name: userData.name,
         role: userData.role,
-        municipio_id: userData.municipio_id
+        municipio_id: userData.municipio_id,
+        photo_url: userData.photo_url || null
       },
       process.env.JWT_SECRET || 'seu-secret-aqui',
       { expiresIn: '24h' }
@@ -249,7 +397,8 @@ app.post('/auth/login', async (req, res) => {
         id: userId,
         name: userData.nome || userData.name,
         email: userData.email,
-        role: userData.role
+        role: userData.role,
+        photo_url: userData.photo_url || null
       },
       expires_in: 86400 // 24 horas em segundos
     });
@@ -639,13 +788,51 @@ const isAdminMaster = async (req, res, next) => {
  */
 app.get('/admin/municipalities', authenticateToken, isAdminMaster, async (req, res) => {
   try {
-    const municipiosRef = db.collection('municipalities');
-    const snapshot = await municipiosRef.get();
+    const [municipiosSnapshot, usersSnapshot] = await Promise.all([
+      db.collection('municipalities').get(),
+      db.collection('users').get()
+    ]);
 
-    const municipalities = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    const usuariosPorMunicipio = {};
+    const usuariosAtivosPorMunicipio = {};
+
+    usersSnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      const municipioId = data.municipio_id;
+
+      if (!municipioId) {
+        return;
+      }
+
+      usuariosPorMunicipio[municipioId] = (usuariosPorMunicipio[municipioId] || 0) + 1;
+
+      const status = (data.status || 'active').toString().toLowerCase();
+      if (status === 'active' || status === 'ativo') {
+        usuariosAtivosPorMunicipio[municipioId] = (usuariosAtivosPorMunicipio[municipioId] || 0) + 1;
+      }
+    });
+
+    const municipalities = municipiosSnapshot.docs.map(doc => {
+      const data = doc.data();
+      const municipioId = doc.id;
+      const totalUsuarios = usuariosPorMunicipio[municipioId]
+        || data.usuarios_atuais
+        || data.current_users
+        || 0;
+      const usuariosAtivos = usuariosAtivosPorMunicipio[municipioId]
+        || data.usuarios_ativos
+        || data.active_users
+        || 0;
+
+      return {
+        id: municipioId,
+        ...data,
+        usuarios_atuais: totalUsuarios,
+        usuarios_ativos: usuariosAtivos,
+        current_users: totalUsuarios,
+        active_users: usuariosAtivos
+      };
+    });
 
     res.json({
       total: municipalities.length,
@@ -743,11 +930,40 @@ app.post('/admin/municipalities', authenticateToken, isAdminMaster, async (req, 
         status: 'active',
         created_at: new Date().toISOString(),
         created_by: req.user.email,
-        last_login: null
+        last_login: null,
+        photo_url: ''
       };
 
-      await db.collection('users').add(adminUser);
+      const adminUserRef = await db.collection('users').add(adminUser);
+
+      await logAuditEvent({
+        entityType: 'user',
+        entityId: adminUserRef.id,
+        action: 'create',
+        performedBy: req.user.email,
+        performedById: req.user.id,
+        performedByRole: req.user.role,
+        after: adminUser,
+        metadata: {
+          auto_generated: true,
+          municipio_id: id
+        }
+      });
     }
+
+    await logAuditEvent({
+      entityType: 'municipality',
+      entityId: id,
+      action: 'create',
+      performedBy: req.user.email,
+      performedById: req.user.id,
+      performedByRole: req.user.role,
+      after: municipio,
+      metadata: {
+        created_via: 'admin_panel',
+        auto_admin_created: Boolean(admin_email)
+      }
+    });
 
     res.status(201).json({
       message: 'Município criado com sucesso',
@@ -819,6 +1035,10 @@ app.get('/admin/municipalities/:municipio_id', authenticateToken, isAdminMaster,
 app.put('/admin/municipalities/:municipio_id', authenticateToken, isAdminMaster, async (req, res) => {
   try {
     const { municipio_id } = req.params;
+    const docRef = db.collection('municipalities').doc(municipio_id);
+    const beforeSnapshot = await docRef.get();
+    const beforeData = beforeSnapshot.exists ? beforeSnapshot.data() : null;
+
     const updateData = {
       ...req.body,
       updated_at: new Date().toISOString(),
@@ -829,7 +1049,24 @@ app.put('/admin/municipalities/:municipio_id', authenticateToken, isAdminMaster,
       updateData.documentos = [updateData.documentos];
     }
 
-    await db.collection('municipalities').doc(municipio_id).update(updateData);
+    await docRef.update(updateData);
+
+    const afterSnapshot = await docRef.get();
+    const afterData = afterSnapshot.exists ? afterSnapshot.data() : null;
+
+    await logAuditEvent({
+      entityType: 'municipality',
+      entityId: municipio_id,
+      action: 'update',
+      performedBy: req.user.email,
+      performedById: req.user.id,
+      performedByRole: req.user.role,
+      before: beforeData,
+      after: afterData,
+      metadata: {
+        updated_fields: Object.keys(req.body || {})
+      }
+    });
 
     res.json({
       message: 'Município atualizado com sucesso',
@@ -867,7 +1104,22 @@ app.delete('/admin/municipalities/:municipio_id', authenticateToken, isAdminMast
       });
     }
 
-    await db.collection('municipalities').doc(municipio_id).delete();
+    const docRef = db.collection('municipalities').doc(municipio_id);
+    const municipioSnapshot = await docRef.get();
+    const municipioData = municipioSnapshot.exists ? municipioSnapshot.data() : null;
+
+    await docRef.delete();
+
+    await logAuditEvent({
+      entityType: 'municipality',
+      entityId: municipio_id,
+      action: 'delete',
+      performedBy: req.user.email,
+      performedById: req.user.id,
+      performedByRole: req.user.role,
+      before: municipioData,
+      after: null
+    });
 
     res.status(200).json({
       success: true,
@@ -1081,10 +1333,31 @@ app.post('/admin/reset-password/:user_id', authenticateToken, isAdminMaster, asy
       });
     }
 
-    await db.collection('users').doc(user_id).update({
+    const docRef = db.collection('users').doc(user_id);
+    const beforeSnapshot = await docRef.get();
+    const beforeData = beforeSnapshot.exists ? beforeSnapshot.data() : null;
+
+    await docRef.update({
       password: new_password,
       password_reset_at: new Date().toISOString(),
       password_reset_by: req.user.email
+    });
+
+    const afterSnapshot = await docRef.get();
+    const afterData = afterSnapshot.exists ? afterSnapshot.data() : null;
+
+    await logAuditEvent({
+      entityType: 'user',
+      entityId: user_id,
+      action: 'reset_password',
+      performedBy: req.user.email,
+      performedById: req.user.id,
+      performedByRole: req.user.role,
+      before: beforeData,
+      after: afterData,
+      metadata: {
+        reset_password: true
+      }
     });
 
     res.json({
@@ -1163,7 +1436,8 @@ app.post('/admin/users', authenticateToken, isAdminMaster, async (req, res) => {
       municipio_id,
       municipio_nome,
       phone,
-      cpf
+      cpf,
+      photo_url
     } = req.body;
 
     // Validações
@@ -1220,6 +1494,7 @@ app.post('/admin/users', authenticateToken, isAdminMaster, async (req, res) => {
       municipio_nome: role === 'admin_master' ? null : municipio_nome,
       phone: phone || '',
       cpf: cpf || '',
+      photo_url: photo_url ? photo_url.trim() : '',
       status: 'active',
       created_at: new Date().toISOString(),
       created_by: req.user.email,
@@ -1227,6 +1502,19 @@ app.post('/admin/users', authenticateToken, isAdminMaster, async (req, res) => {
     };
 
     const docRef = await db.collection('users').add(novoUsuario);
+
+    await logAuditEvent({
+      entityType: 'user',
+      entityId: docRef.id,
+      action: 'create',
+      performedBy: req.user.email,
+      performedById: req.user.id,
+      performedByRole: req.user.role,
+      after: novoUsuario,
+      metadata: {
+        municipio_id: novoUsuario.municipio_id || null
+      }
+    });
 
     res.status(201).json({
       message: 'Usuário criado com sucesso',
@@ -1297,11 +1585,215 @@ app.put('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req, r
       role,
       municipio_id,
       municipio_nome,
-      status
+      status,
+      photo_url
     } = req.body;
+
+    const docRef = db.collection('users').doc(user_id);
+    const beforeSnapshot = await docRef.get();
+    const beforeData = beforeSnapshot.exists ? beforeSnapshot.data() : null;
 
     const updateData = {};
     const validRoles = ['admin_master', 'admin_municipio', 'gestor_contrato', 'fiscal_contrato'];
+
+    app.post('/admin/users/:user_id/photo', authenticateToken, isAdminMaster, async (req, res) => {
+      try {
+        const { user_id } = req.params;
+        const { image_base64 } = req.body || {};
+
+        if (!user_id) {
+          return res.status(400).json({
+            error: {
+              code: 'MISSING_USER_ID',
+              message: 'Usuário inválido para upload de foto'
+            }
+          });
+        }
+
+        if (req.user?.id !== user_id) {
+          return res.status(403).json({
+            error: {
+              code: 'FORBIDDEN',
+              message: 'Você só pode atualizar a sua própria foto de perfil'
+            }
+          });
+        }
+
+        const parsedImage = parseImageDataUrl(image_base64);
+        if (!parsedImage) {
+          return res.status(400).json({
+            error: {
+              code: 'INVALID_IMAGE',
+              message: 'Formato de imagem inválido'
+            }
+          });
+        }
+
+        const userRef = db.collection('users').doc(user_id);
+        const beforeSnapshot = await userRef.get();
+
+        if (!beforeSnapshot.exists) {
+          return res.status(404).json({
+            error: {
+              code: 'NOT_FOUND',
+              message: 'Usuário não encontrado'
+            }
+          });
+        }
+
+        const beforeData = beforeSnapshot.data();
+
+        const uniqueId = crypto.randomUUID();
+        const filePath = `profile_photos/${user_id}/${uniqueId}.${parsedImage.extension}`;
+        const file = bucket.file(filePath);
+
+        await file.save(parsedImage.buffer, {
+          metadata: {
+            contentType: parsedImage.mimeType,
+            cacheControl: 'public,max-age=3600'
+          }
+        });
+
+        await file.makePublic();
+
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+
+        await userRef.update({
+          photo_url: publicUrl,
+          updated_at: new Date().toISOString(),
+          updated_by: req.user.email
+        });
+
+        if (beforeData?.photo_url && beforeData.photo_url !== publicUrl) {
+          await deleteStorageFileByUrl(beforeData.photo_url);
+        }
+
+        const afterSnapshot = await userRef.get();
+        const afterData = afterSnapshot.data();
+
+        await logAuditEvent({
+          entityType: 'user',
+          entityId: user_id,
+          action: 'update',
+          performedBy: req.user.email,
+          performedById: req.user.id,
+          performedByRole: req.user.role,
+          before: beforeData,
+          after: afterData,
+          metadata: {
+            updated_fields: ['photo_url']
+          }
+        });
+
+        res.json({
+          message: 'Foto de perfil atualizada com sucesso',
+          photo_url: publicUrl
+        });
+      } catch (error) {
+        if (error && error.message === 'IMAGE_TOO_LARGE') {
+          return res.status(413).json({
+            error: {
+              code: 'IMAGE_TOO_LARGE',
+              message: 'Imagem excede o limite de 4MB'
+            }
+          });
+        }
+
+        if (error && error.message === 'UNSUPPORTED_IMAGE_TYPE') {
+          return res.status(415).json({
+            error: {
+              code: 'UNSUPPORTED_IMAGE_TYPE',
+              message: 'Formato de imagem não suportado. Utilize JPG, PNG ou WEBP.'
+            }
+          });
+        }
+
+        console.error('Erro ao atualizar foto de perfil:', error);
+        res.status(500).json({
+          error: {
+            code: 'PHOTO_UPLOAD_ERROR',
+            message: 'Erro ao atualizar foto de perfil'
+          }
+        });
+      }
+    });
+
+    app.delete('/admin/users/:user_id/photo', authenticateToken, isAdminMaster, async (req, res) => {
+      try {
+        const { user_id } = req.params;
+
+        if (!user_id) {
+          return res.status(400).json({
+            error: {
+              code: 'MISSING_USER_ID',
+              message: 'Usuário inválido para remoção de foto'
+            }
+          });
+        }
+
+        if (req.user?.id !== user_id) {
+          return res.status(403).json({
+            error: {
+              code: 'FORBIDDEN',
+              message: 'Você só pode remover a sua própria foto de perfil'
+            }
+          });
+        }
+
+        const userRef = db.collection('users').doc(user_id);
+        const beforeSnapshot = await userRef.get();
+
+        if (!beforeSnapshot.exists) {
+          return res.status(404).json({
+            error: {
+              code: 'NOT_FOUND',
+              message: 'Usuário não encontrado'
+            }
+          });
+        }
+
+        const beforeData = beforeSnapshot.data();
+
+        if (beforeData?.photo_url) {
+          await deleteStorageFileByUrl(beforeData.photo_url);
+        }
+
+        await userRef.update({
+          photo_url: '',
+          updated_at: new Date().toISOString(),
+          updated_by: req.user.email
+        });
+
+        const afterSnapshot = await userRef.get();
+        const afterData = afterSnapshot.data();
+
+        await logAuditEvent({
+          entityType: 'user',
+          entityId: user_id,
+          action: 'update',
+          performedBy: req.user.email,
+          performedById: req.user.id,
+          performedByRole: req.user.role,
+          before: beforeData,
+          after: afterData,
+          metadata: {
+            updated_fields: ['photo_url']
+          }
+        });
+
+        res.json({
+          message: 'Foto de perfil removida com sucesso'
+        });
+      } catch (error) {
+        console.error('Erro ao remover foto de perfil:', error);
+        res.status(500).json({
+          error: {
+            code: 'PHOTO_DELETE_ERROR',
+            message: 'Erro ao remover foto de perfil'
+          }
+        });
+      }
+    });
     const statusNormalized = typeof status === 'string' ? status.toLowerCase() : undefined;
 
     if (Object.prototype.hasOwnProperty.call(req.body, 'name')) {
@@ -1345,6 +1837,10 @@ app.put('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req, r
       updateData.status = statusNormalized || 'active';
     }
 
+    if (Object.prototype.hasOwnProperty.call(req.body, 'photo_url')) {
+      updateData.photo_url = photo_url ? photo_url.trim() : '';
+    }
+
     if (Object.keys(updateData).length === 0) {
       return res.status(400).json({
         error: {
@@ -1357,7 +1853,27 @@ app.put('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req, r
     updateData.updated_at = new Date().toISOString();
     updateData.updated_by = req.user.email;
 
-    await db.collection('users').doc(user_id).update(updateData);
+    await docRef.update(updateData);
+
+    const afterSnapshot = await docRef.get();
+    const afterData = afterSnapshot.exists ? afterSnapshot.data() : null;
+
+    const updatedFields = Object.keys(updateData).filter(field => !['updated_at', 'updated_by'].includes(field));
+
+    await logAuditEvent({
+      entityType: 'user',
+      entityId: user_id,
+      action: 'update',
+      performedBy: req.user.email,
+      performedById: req.user.id,
+      performedByRole: req.user.role,
+      before: beforeData,
+      after: afterData,
+      metadata: {
+        updated_fields: updatedFields,
+        municipio_id: afterData?.municipio_id || null
+      }
+    });
 
     res.json({
       message: 'Usuário atualizado com sucesso',
@@ -1380,9 +1896,9 @@ app.put('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req, r
 app.delete('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req, res) => {
   try {
     const { user_id } = req.params;
-    
-    // Verificar se o usuário que está deletando não é a si mesmo
-    const userDoc = await db.collection('users').doc(user_id).get();
+
+    const docRef = db.collection('users').doc(user_id);
+    const userDoc = await docRef.get();
     if (userDoc.exists && userDoc.data().email === req.user.email) {
       return res.status(400).json({
         error: {
@@ -1392,7 +1908,20 @@ app.delete('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req
       });
     }
 
-    await db.collection('users').doc(user_id).delete();
+    const beforeData = userDoc.exists ? userDoc.data() : null;
+
+    await docRef.delete();
+
+    await logAuditEvent({
+      entityType: 'user',
+      entityId: user_id,
+      action: 'delete',
+      performedBy: req.user.email,
+      performedById: req.user.id,
+      performedByRole: req.user.role,
+      before: beforeData,
+      after: null
+    });
 
     res.status(204).send();
   } catch (error) {
@@ -1436,6 +1965,91 @@ app.get('/admin/users/statistics', authenticateToken, isAdminMaster, async (req,
       error: {
         code: 'STATS_ERROR',
         message: 'Erro ao obter estatísticas'
+      }
+    });
+  }
+});
+
+/**
+ * GET /admin/audit-logs
+ * Lista registros de auditoria (apenas proprietário)
+ */
+app.get('/admin/audit-logs', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const {
+      entity_type,
+      action,
+      performed_by,
+      limit = 50,
+      cursor
+    } = req.query;
+
+    const limitNum = Number.parseInt(limit, 10) > 0 ? Math.min(Number.parseInt(limit, 10), 100) : 50;
+    const fetchLimit = Math.min(Math.max(limitNum * 3, limitNum + 20), 300);
+
+    let query = db.collection(AUDIT_COLLECTION)
+      .orderBy('created_at', 'desc');
+
+    if (cursor) {
+      const cursorDate = new Date(cursor);
+      if (!Number.isNaN(cursorDate.getTime())) {
+        query = query.startAfter(admin.firestore.Timestamp.fromDate(cursorDate));
+      }
+    }
+
+    const snapshot = await query.limit(fetchLimit + 1).get();
+
+    const rawLogs = snapshot.docs.map(doc => {
+      const data = doc.data();
+      const createdAt = data.created_at && data.created_at.toDate ? data.created_at.toDate().toISOString() : null;
+
+      return {
+        id: doc.id,
+        entity_type: data.entity_type || null,
+        entity_id: data.entity_id || null,
+        action: data.action || null,
+        performed_by: data.performed_by || null,
+        performed_by_id: data.performed_by_id || null,
+        performed_by_role: data.performed_by_role || null,
+        before: data.before || null,
+        after: data.after || null,
+        metadata: data.metadata || null,
+        created_at: createdAt
+      };
+    });
+
+    const filteredLogs = rawLogs.filter(log => {
+      if (entity_type && log.entity_type !== entity_type) return false;
+      if (action && log.action !== action) return false;
+      if (performed_by && log.performed_by !== performed_by) return false;
+      return true;
+    });
+
+    const logs = filteredLogs.slice(0, limitNum);
+
+    let nextCursor = null;
+    if (logs.length === limitNum) {
+      nextCursor = logs[logs.length - 1]?.created_at || null;
+    }
+
+    if (!nextCursor && snapshot.docs.length > fetchLimit) {
+      const lastDoc = snapshot.docs[snapshot.docs.length - 1];
+      const lastCreated = lastDoc && lastDoc.get('created_at');
+      if (lastCreated && lastCreated.toDate) {
+        nextCursor = lastCreated.toDate().toISOString();
+      }
+    }
+
+    res.json({
+      logs,
+      next_cursor: nextCursor
+    });
+  } catch (error) {
+    console.error('Erro ao listar logs de auditoria:', error);
+    res.status(500).json({
+      error: {
+        code: 'AUDIT_LIST_ERROR',
+        message: 'Erro ao carregar logs de auditoria'
       }
     });
   }
