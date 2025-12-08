@@ -97,10 +97,14 @@ const API = {
       throw new Error('Token não encontrado. Faça login novamente.');
     }
     
+    const method = (options.method || 'GET').toUpperCase();
     const headers = {
-      'Content-Type': 'application/json',
       ...options.headers
     };
+
+    if (!headers['Content-Type'] && method !== 'GET' && method !== 'HEAD') {
+      headers['Content-Type'] = 'application/json';
+    }
     
     if (token && !options.skipAuth) {
       headers['Authorization'] = `Bearer ${token}`;
@@ -123,7 +127,17 @@ const API = {
         throw new Error(error.message || `Erro HTTP: ${response.status}`);
       }
       
-      return await response.json();
+      const rawText = await response.text();
+
+      if (!rawText) {
+        return null;
+      }
+
+      try {
+        return JSON.parse(rawText);
+      } catch (parseError) {
+        return rawText;
+      }
     } catch (error) {
       console.error(`API Error [${endpoint}]:`, error);
       throw error;

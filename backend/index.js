@@ -683,7 +683,12 @@ app.post('/admin/municipalities', authenticateToken, isAdminMaster, async (req, 
       max_contracts,
       status,
       admin_email,
-      admin_name
+      admin_name,
+      contato_nome,
+      contato_email,
+      contato_telefone,
+      observacoes,
+      documentos
     } = req.body;
 
     const id = municipio_id || (nome || cidade || '').toLowerCase();
@@ -714,7 +719,14 @@ app.post('/admin/municipalities', authenticateToken, isAdminMaster, async (req, 
       max_contracts: max_contracts || 500,
       status: status || 'active',
       created_at: new Date().toISOString(),
-      created_by: req.user.email
+      created_by: req.user.email,
+      updated_at: new Date().toISOString(),
+      updated_by: req.user.email,
+      contato_nome: contato_nome || '',
+      contato_email: contato_email || '',
+      contato_telefone: contato_telefone || '',
+      observacoes: observacoes || '',
+      documentos: Array.isArray(documentos) ? documentos : (documentos ? [documentos].flat() : [])
     };
 
     await db.collection('municipalities').doc(id).set(municipio);
@@ -813,6 +825,10 @@ app.put('/admin/municipalities/:municipio_id', authenticateToken, isAdminMaster,
       updated_by: req.user.email
     };
 
+    if (updateData.documentos && !Array.isArray(updateData.documentos)) {
+      updateData.documentos = [updateData.documentos];
+    }
+
     await db.collection('municipalities').doc(municipio_id).update(updateData);
 
     res.json({
@@ -853,7 +869,11 @@ app.delete('/admin/municipalities/:municipio_id', authenticateToken, isAdminMast
 
     await db.collection('municipalities').doc(municipio_id).delete();
 
-    res.status(204).send();
+    res.status(200).json({
+      success: true,
+      message: 'Município deletado com sucesso',
+      municipio_id
+    });
   } catch (error) {
     res.status(500).json({
       error: {
@@ -870,42 +890,170 @@ app.delete('/admin/municipalities/:municipio_id', authenticateToken, isAdminMast
  */
 app.get('/admin/dashboard', authenticateToken, isAdminMaster, async (req, res) => {
   try {
-    // Total de municípios
-    const municipiosSnapshot = await db.collection('municipalities').get();
-    const totalMunicipios = municipiosSnapshot.size;
+    const [municipiosSnapshot, usersSnapshot, contratosSnapshot] = await Promise.all([
+      db.collection('municipalities').get(),
+      db.collection('users').get(),
+      db.collection('contratos').get()
+    ]);
 
-    // Total de usuários
-    const usersSnapshot = await db.collection('users').get();
-    const totalUsuarios = usersSnapshot.size;
+    const planPrices = {
+      standard: 500,
+      profissional: 1250,
+      premium: 2500
+    };
 
-    // Total de contratos
-    const contratosSnapshot = await db.collection('contratos').get();
-    const totalContratos = contratosSnapshot.size;
-
-    // Municípios ativos
-    const municipiosAtivos = municipiosSnapshot.docs.filter(doc => doc.data().status === 'active').length;
-
-    // Licenças vencendo em 30 dias
     const now = new Date();
     const in30Days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-    const licencasVencendo = municipiosSnapshot.docs.filter(doc => {
-      const expireDate = new Date(doc.data().license_expires);
-      return expireDate <= in30Days && expireDate > now;
-    }).length;
 
-    res.json({
-      dashboard: {
-        summary: {
-          total_municipalities: totalMunicipios,
-          active_municipalities: municipiosAtivos,
-          total_users: totalUsuarios,
-          total_contracts: totalContratos,
-          licenses_expiring_soon: licencasVencendo
-        },
-        timestamp: new Date().toISOString()
+    const municipiosDetalhes = [];
+    const planosResumo = {
+      standard: { quantidade: 0, ativos: 0, receitaMensal: 0 },
+      profissional: { quantidade: 0, ativos: 0, receitaMensal: 0 },
+      premium: { quantidade: 0, ativos: 0, receitaMensal: 0 }
+    };
+    const municipiosPorEstado = {};
+
+    let municipiosAtivos = 0;
+    let licencasExpirandoEm30Dias = 0;
+    let receitaMensal = 0;
+
+    municipiosSnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      const municipioId = doc.id;
+      const nome = data.nome || data.municipio_nome || data.cidade || municipioId;
+      const estado = (data.estado || '').toUpperCase();
+      const plano = (data.license_type || data.plano || 'standard').toLowerCase();
+      const status = (data.status || 'ativo').toString().toLowerCase();
+      const isActive = status === 'ativo' || status === 'active';
+      const price = planPrices[plano] || 0;
+      const createdAt = data.created_at ? new Date(data.created_at) : null;
+      const licenseExpires = data.license_expires || data.data_vencimento_licenca || null;
+      const licenseExpiresDate = licenseExpires ? new Date(licenseExpires) : null;
+
+      if (estado) {
+        municipiosPorEstado[estado] = (municipiosPorEstado[estado] || 0) + 1;
+      }
+
+      if (planosResumo[plano]) {
+        planosResumo[plano].quantidade += 1;
+        if (isActive) {
+          planosResumo[plano].ativos += 1;
+          planosResumo[plano].receitaMensal += price;
+        }
+      }
+
+      if (isActive) {
+        municipiosAtivos += 1;
+        receitaMensal += price;
+      }
+
+      let diasParaVencer = null;
+      if (licenseExpiresDate && !Number.isNaN(licenseExpiresDate.getTime())) {
+        const diff = Math.ceil((licenseExpiresDate - now) / (1000 * 60 * 60 * 24));
+        diasParaVencer = diff;
+        if (diff > 0 && diff <= 30) {
+          licencasExpirandoEm30Dias += 1;
+        }
+      }
+
+      municipiosDetalhes.push({
+        municipio_id: municipioId,
+        nome,
+        estado,
+        plano,
+        status: isActive ? 'ativo' : 'inativo',
+        receita_mensal: isActive ? price : 0,
+        license_expires: licenseExpiresDate ? licenseExpiresDate.toISOString() : null,
+        dias_para_vencer: diasParaVencer,
+        created_at: createdAt ? createdAt.toISOString() : null
+      });
+    });
+
+    const totalMunicipios = municipiosSnapshot.size;
+    const totalUsuarios = usersSnapshot.size;
+    const totalContratos = contratosSnapshot.size;
+
+    let usuariosAtivos = 0;
+    const usuariosPorPerfil = {};
+    const usuariosPorStatus = { ativo: 0, inativo: 0 };
+
+    usersSnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      const status = (data.status || 'ativo').toString().toLowerCase();
+      const role = (data.role || 'desconhecido').toString().toLowerCase();
+
+      usuariosPorPerfil[role] = (usuariosPorPerfil[role] || 0) + 1;
+
+      if (status === 'ativo' || status === 'active') {
+        usuariosAtivos += 1;
+        usuariosPorStatus.ativo += 1;
+      } else {
+        usuariosPorStatus.inativo += 1;
       }
     });
+
+    let contratosAtivos = 0;
+    let contratosValorTotal = 0;
+
+    contratosSnapshot.docs.forEach(doc => {
+      const data = doc.data();
+      const status = (data.status || 'rascunho').toString().toLowerCase();
+      const valor = parseFloat(data.valor || data.valor_total || 0) || 0;
+
+      contratosValorTotal += valor;
+      if (status === 'ativo' || status === 'active' || status === 'vigente') {
+        contratosAtivos += 1;
+      }
+    });
+
+    const topMunicipiosPorReceita = [...municipiosDetalhes]
+      .filter(item => item.receita_mensal > 0)
+      .sort((a, b) => b.receita_mensal - a.receita_mensal)
+      .slice(0, 5);
+
+    const licencasVencendoLista = municipiosDetalhes
+      .filter(item => typeof item.dias_para_vencer === 'number' && item.dias_para_vencer > 0 && item.dias_para_vencer <= 30)
+      .sort((a, b) => a.dias_para_vencer - b.dias_para_vencer)
+      .slice(0, 10);
+
+    const municipiosRecentes = [...municipiosDetalhes]
+      .filter(item => item.created_at)
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 5);
+
+    const planosDetalhados = Object.keys(planosResumo).reduce((acc, plano) => {
+      const resumo = planosResumo[plano];
+      acc[plano] = {
+        quantidade: resumo.quantidade,
+        ativos: resumo.ativos,
+        receita_mensal: Number(resumo.receitaMensal.toFixed(2)),
+        receita_anual: Number((resumo.receitaMensal * 12).toFixed(2))
+      };
+      return acc;
+    }, {});
+
+    res.json({
+      total_municipios: totalMunicipios,
+      municipios_ativos: municipiosAtivos,
+      total_usuarios: totalUsuarios,
+      usuarios_ativos: usuariosAtivos,
+      contratos_totais: totalContratos,
+      contratos_ativos: contratosAtivos,
+      contratos_valor_total: Number(contratosValorTotal.toFixed(2)),
+      receita_mensal: Number(receitaMensal.toFixed(2)),
+      receita_anual: Number((receitaMensal * 12).toFixed(2)),
+      licencas_vencendo_30_dias: licencasExpirandoEm30Dias,
+      planos: planosDetalhados,
+      municipios_por_estado: municipiosPorEstado,
+      usuarios_por_perfil: usuariosPorPerfil,
+      usuarios_por_status: usuariosPorStatus,
+      top_municipios_por_receita: topMunicipiosPorReceita,
+      licencas_vencendo: licencasVencendoLista,
+      municipios_recentes: municipiosRecentes,
+      updated_at: new Date().toISOString()
+    });
   } catch (error) {
+    console.error('Erro ao carregar dashboard:', error);
     res.status(500).json({
       error: {
         code: 'DASHBOARD_ERROR',
@@ -1148,16 +1296,27 @@ app.put('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req, r
       cpf,
       role,
       municipio_id,
+      municipio_nome,
       status
     } = req.body;
 
     const updateData = {};
-    
-    if (name) updateData.name = name;
-    if (phone) updateData.phone = phone;
-    if (cpf) updateData.cpf = cpf;
-    if (role) {
-      const validRoles = ['admin_master', 'admin_municipio', 'gestor_contrato', 'fiscal_contrato'];
+    const validRoles = ['admin_master', 'admin_municipio', 'gestor_contrato', 'fiscal_contrato'];
+    const statusNormalized = typeof status === 'string' ? status.toLowerCase() : undefined;
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'name')) {
+      updateData.name = name || '';
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'phone')) {
+      updateData.phone = phone || '';
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'cpf')) {
+      updateData.cpf = cpf || '';
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'role')) {
       if (!validRoles.includes(role)) {
         return res.status(400).json({
           error: {
@@ -1168,8 +1327,32 @@ app.put('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req, r
       }
       updateData.role = role;
     }
-    if (municipio_id) updateData.municipio_id = municipio_id;
-    if (status) updateData.status = status;
+
+    if (
+      Object.prototype.hasOwnProperty.call(req.body, 'municipio_id') ||
+      Object.prototype.hasOwnProperty.call(req.body, 'municipio_nome')
+    ) {
+      if (role === 'admin_master' || updateData.role === 'admin_master') {
+        updateData.municipio_id = null;
+        updateData.municipio_nome = null;
+      } else {
+        updateData.municipio_id = municipio_id || null;
+        updateData.municipio_nome = municipio_nome || null;
+      }
+    }
+
+    if (Object.prototype.hasOwnProperty.call(req.body, 'status')) {
+      updateData.status = statusNormalized || 'active';
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return res.status(400).json({
+        error: {
+          code: 'NO_CHANGES',
+          message: 'Nenhum campo válido informado para atualização'
+        }
+      });
+    }
 
     updateData.updated_at = new Date().toISOString();
     updateData.updated_by = req.user.email;
@@ -1268,43 +1451,98 @@ app.get('/admin/users/statistics', authenticateToken, isAdminMaster, async (req,
  */
 app.get('/admin/revenue', authenticateToken, isAdminMaster, async (req, res) => {
   try {
-    const { period = '12months' } = req.query; // 'month', 'quarter', '12months'
-
     const municipiosSnapshot = await db.collection('municipalities').get();
-    
+
     const planPrices = {
-      standard: 5000,
-      profissional: 15000,
-      premium: 30000
+      standard: 500,
+      profissional: 1250,
+      premium: 2500
     };
 
-    let totalRevenue = 0;
-    const revenueByMunicpio = {};
-    const revenueByPlan = {
-      standard: 0,
-      profissional: 0,
-      premium: 0
+    const planLabels = {
+      standard: 'Standard',
+      profissional: 'Profissional',
+      premium: 'Premium'
     };
+
+    const municipiosReceita = [];
+    const planosResumo = {
+      standard: { quantidade: 0, receitaMensal: 0 },
+      profissional: { quantidade: 0, receitaMensal: 0 },
+      premium: { quantidade: 0, receitaMensal: 0 }
+    };
+
+    let receitaMensalTotal = 0;
+    let municipiosAtivos = 0;
 
     municipiosSnapshot.docs.forEach(doc => {
-      const municipio = doc.data();
-      const planPrice = planPrices[municipio.license_type] || 0;
-      
-      totalRevenue += planPrice;
-      revenueByMunicpio[municipio.municipio_nome] = planPrice;
-      revenueByPlan[municipio.license_type] += planPrice;
+      const data = doc.data();
+      const municipioId = doc.id;
+      const nome = data.nome || data.municipio_nome || data.cidade || municipioId;
+      const estado = (data.estado || '').toUpperCase();
+      const plano = (data.license_type || data.plano || 'standard').toLowerCase();
+      const status = (data.status || 'ativo').toString().toLowerCase();
+      const isActive = status === 'ativo' || status === 'active';
+      const price = planPrices[plano] || 0;
+
+      if (planosResumo[plano]) {
+        planosResumo[plano].quantidade += 1;
+        if (isActive) {
+          planosResumo[plano].receitaMensal += price;
+        }
+      }
+
+      if (isActive) {
+        municipiosAtivos += 1;
+        receitaMensalTotal += price;
+      }
+
+      municipiosReceita.push({
+        municipio_id: municipioId,
+        nome,
+        estado,
+        plano,
+        plano_label: planLabels[plano] || plano,
+        status: isActive ? 'ativo' : 'inativo',
+        receita_mensal: isActive ? price : 0,
+        receita_anual: isActive ? price * 12 : 0
+      });
     });
 
+    const historicoMensal = Array.from({ length: 6 }).map((_, index) => {
+      const dataRef = new Date();
+      dataRef.setMonth(dataRef.getMonth() - (5 - index));
+      const label = dataRef.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+      return {
+        mes: label,
+        receita_mensal: Number(receitaMensalTotal.toFixed(2))
+      };
+    });
+
+    const planosDetalhados = Object.keys(planosResumo).reduce((acc, plano) => {
+      const resumo = planosResumo[plano];
+      acc[plano] = {
+        quantidade: resumo.quantidade,
+        receita_mensal: Number(resumo.receitaMensal.toFixed(2)),
+        receita_anual: Number((resumo.receitaMensal * 12).toFixed(2))
+      };
+      return acc;
+    }, {});
+
+    const ticketMedio = municipiosAtivos > 0 ? receitaMensalTotal / municipiosAtivos : 0;
+
     res.json({
-      revenue: {
-        total_annual: totalRevenue,
-        monthly_average: totalRevenue / 12,
-        by_municipality: revenueByMunicpio,
-        by_plan: revenueByPlan,
-        timestamp: new Date().toISOString()
-      }
+      receita_mensal_total: Number(receitaMensalTotal.toFixed(2)),
+      receita_anual_projetada: Number((receitaMensalTotal * 12).toFixed(2)),
+      ticket_medio_municipio: Number(ticketMedio.toFixed(2)),
+      municipios_ativos: municipiosAtivos,
+      planos: planosDetalhados,
+      municipios: municipiosReceita.sort((a, b) => b.receita_mensal - a.receita_mensal),
+      historico: historicoMensal,
+      atualizado_em: new Date().toISOString()
     });
   } catch (error) {
+    console.error('Erro ao obter dados de receita:', error);
     res.status(500).json({
       error: {
         code: 'REVENUE_ERROR',
