@@ -1,8 +1,8 @@
-# Dashboard Admin Master - Documentação
+# Dashboard Administrativo - Documentação
 
 ## 📊 Visão Geral
 
-O Dashboard Admin Master é a interface central de gerenciamento do sistema Ciclo Integrado para o proprietário (admin_master). Oferece visibilidade completa sobre todos os municípios cadastrados, usuários, receita, e licenças.
+O Dashboard Administrativo é a interface central de gerenciamento do sistema Ciclo Integrado para o proprietário (admin_master). Oferece visibilidade completa sobre todos os municípios cadastrados, usuários, receita, e licenças.
 
 ## 🎯 Funcionalidades Principais
 

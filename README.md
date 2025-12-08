@@ -46,7 +46,7 @@ CicloIntegrado/
 │   └── main.js                    # Funções JavaScript principais
 - **pages/
 │   ├── login.html                 # Tela de login
-│   ├── admin-dashboard.html       # 👑 Dashboard Admin Master (NOVO)
+│   ├── admin-dashboard.html       # 👑 Dashboard Administrativo (NOVO)
 │   ├── dashboard.html             # Painel principal (municipios)
 │   ├── cadastro-contratos.html    # Novo contrato
 │   ├── listagem-contratos.html    # Lista de contratos
@@ -141,7 +141,7 @@ CicloIntegrado/
 - Validar todas as entradas do usuário
 - CORS configurado corretamente
 
-## 👑 Dashboard Admin Master
+## 👑 Dashboard Administrativo
 
 **NOVO!** Dashboard completo para gerenciar todo seu negócio SaaS.
 
@@ -160,7 +160,7 @@ http://localhost:8888/pages/admin-dashboard.html
 ```
 
 **Documentação Completa:**
-→ Leia `ADMIN-MASTER-DASHBOARD.md`
+→ Leia `ADMIN-MASTER-DASHBOARD.md` (Dashboard Administrativo)
 
 ### Hierarquia de Roles:
 ```

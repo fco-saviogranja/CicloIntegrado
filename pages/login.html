@@ -40,7 +40,7 @@
         }
     </style>
 
-    <link href="./css/styles.css" rel="stylesheet"/>
+    <link href="../css/styles.css" rel="stylesheet"/>
 </head>
 <body class="bg-background-light dark:bg-background-dark font-display">
 <div class="relative flex min-h-screen w-full flex-col group/design-root" style="--checkbox-tick-svg: url('data:image/svg+xml,%3csvg viewBox=%270 0 16 16%27 fill=%27rgb(255,255,255)%27 xmlns=%27http://www.w3.org/2000/svg%27%3e%3cpath d=%27M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z%27/%3e%3c/svg%3e');">
@@ -50,16 +50,13 @@
                 <div class="grid lg:grid-cols-2 min-h-screen">
                     <div class="relative hidden lg:flex flex-col items-center justify-center bg-background-light dark:bg-background-dark p-12">
                         <div class="w-full max-w-lg text-center">
-                            <img alt="Logo Ciclo Integrado" class="h-20 mx-auto mb-4 object-contain" src="../assets/images/logo_ciclo_integrado.png"/>
-                            <h2 class="text-2xl font-semibold text-gray-800 dark:text-gray-200 tracking-wide">CICLO INTEGRADO</h2>
-                            <p class="mt-1 text-base text-gray-600 dark:text-gray-400">Plataforma de Contratos</p>
-                            <p class="mt-32 text-sm text-gray-500 dark:text-gray-400">Gestão de Contratos Municipais. Acesse para administrar, monitorar e otimizar os processos contratuais.</p>
+                            <img alt="Logo Ciclo Integrado" class="h-80 mx-auto mb-8 object-contain" src="../assets/images/logo_ciclo_integrado.png"/>
+                            <p class="mt-12 text-sm text-gray-500 dark:text-gray-400">Gestão de Contratos Municipais. Acesse para administrar, monitorar e otimizar os processos contratuais.</p>
                         </div>
                     </div>
                     <div class="flex flex-col items-center justify-center p-6 sm:p-12 bg-white dark:bg-gray-900">
                         <div class="w-full max-w-sm">
                             <div class="mb-8 text-center lg:text-left">
-                                <img alt="Logo Ciclo Integrado" class="h-12 mb-4 mx-auto lg:mx-0 object-contain" src="../assets/images/logo_ciclo_integrado.png"/>
                                 <h1 class="text-[#111418] dark:text-gray-100 tracking-tight text-2xl font-semibold leading-tight">Login de Acesso</h1>
                                 <p class="text-gray-500 dark:text-gray-400 mt-1 text-sm">Bem-vindo(a) de volta! Insira suas credenciais.</p>
                             </div>
@@ -67,11 +64,8 @@
                                 <div>
                                     <label class="flex flex-col">
                                         <p class="text-gray-700 dark:text-gray-200 text-sm font-medium leading-normal pb-1.5">Selecionar Município</p>
-                                        <select class="form-select flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-md text-[#111418] dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbe0e6] dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary dark:focus:border-primary h-11 placeholder:text-[#617589] dark:placeholder-gray-500 px-3.5 py-2.5 text-sm font-normal leading-normal">
-                                            <option disabled="" selected="" value="">Escolha um município</option>
-                                            <option value="municipio1">Município A</option>
-                                            <option value="municipio2">Município B</option>
-                                            <option value="municipio3">Município C</option>
+                                        <select id="municipio-select" class="form-select flex w-full min-w-0 flex-1 resize-none overflow-hidden rounded-md text-[#111418] dark:text-gray-200 focus:outline-0 focus:ring-2 focus:ring-primary/50 border border-[#dbe0e6] dark:border-gray-700 bg-white dark:bg-gray-800 focus:border-primary dark:focus:border-primary h-11 placeholder:text-[#617589] dark:placeholder-gray-500 px-3.5 py-2.5 text-sm font-normal leading-normal">
+                                            <option value="">Escolha um município</option>
                                         </select>
                                     </label>
                                 </div>
@@ -100,7 +94,7 @@
                                     <a class="text-sm font-medium text-primary hover:underline focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary rounded-sm" href="#">Esqueci minha senha</a>
                                 </div>
                                 <div class="pt-2">
-                                    <button class="flex min-w-[84px] w-full cursor-pointer items-center justify-center overflow-hidden rounded-md h-10 px-5 bg-primary text-white text-sm font-medium leading-normal tracking-wide hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-200">
+                                    <button type="submit" class="flex min-w-[84px] w-full cursor-pointer items-center justify-center overflow-hidden rounded-md h-10 px-5 bg-primary text-white text-sm font-medium leading-normal tracking-wide hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-colors duration-200">
                                         <span class="truncate">Entrar</span>
                                     </button>
                                 </div>
@@ -127,7 +121,59 @@
     </div>
 </footer>
 
-<script src="../js/main.js"></script>
+<script src="../js/api.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', async function() {
+    const form = document.querySelector('form');
+    const emailInput = form.querySelector('input[type="email"]');
+    const passwordInput = form.querySelector('input[type="password"]');
+    const togglePasswordBtn = form.querySelector('button[aria-label="Toggle password visibility"]');
+    const submitBtn = form.querySelector('button[type="submit"]');
+    const municipioSelect = document.getElementById('municipio-select');
+    
+    // Toggle password visibility
+    togglePasswordBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const type = passwordInput.type === 'password' ? 'text' : 'password';
+        passwordInput.type = type;
+    });
+    
+    // Handle login form submission
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
+        const municipioId = municipioSelect.value;
+        
+        if (!email || !password) {
+            alert('Por favor, preencha email e senha');
+            return;
+        }
+        
+        try {
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<span class="truncate">Carregando...</span>';
+            
+            const response = await API.login(email, password, municipioId);
+            
+            if (response.success) {
+                // Redirect to admin dashboard
+                window.location.href = '/pages/admin-dashboard.html';
+            } else {
+                alert(response.message || 'Erro ao fazer login. Verifique suas credenciais.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span class="truncate">Entrar</span>';
+            }
+        } catch (error) {
+            console.error('Erro no login:', error);
+            alert('Erro ao fazer login: ' + error.message);
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<span class="truncate">Entrar</span>';
+        }
+    });
+});
+</script>
 
 
 <!-- Footer Padrão - Ciclo Integrado -->
@@ -139,7 +185,7 @@
         <img 
           alt="Logo Ciclo Integrado" 
           class="h-12 object-contain" 
-          src="./assets/images/logo_ciclo_integrado.png"
+          src="../assets/images/logo_ciclo_integrado.png"
         />
         <div class="flex flex-col">
           <p class="text-sm font-semibold text-gray-900 dark:text-gray-100">Ciclo Integrado</p>

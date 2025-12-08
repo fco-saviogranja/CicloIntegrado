@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 
 Write-Host "`n" -ForegroundColor Green
-Write-Host "Dashboard Admin Master - Validacao" -ForegroundColor Green
+Write-Host "Dashboard Administrativo - Validacao" -ForegroundColor Green
 Write-Host "==================================`n" -ForegroundColor Green
 
 $success = "Green"
@@ -93,7 +93,7 @@ Write-Host "4️⃣  Documentação Criada:" -ForegroundColor $info
 Write-Host "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 $docs = @{
-    "ADMIN-MASTER-DASHBOARD.md" = "Dashboard Admin Master"
+    "ADMIN-MASTER-DASHBOARD.md" = "Dashboard Administrativo"
     "postman-admin-master.json" = "Postman Collection"
     "DASHBOARD-IMPLEMENTATION-STATUS.md" = "Status Final"
 }
@@ -245,7 +245,7 @@ Write-Host "   Taxa de Sucesso: $percentage%" -ForegroundColor $success
 Write-Host "`n"
 
 Write-Host "╔════════════════════════════════════════════════════════╗" -ForegroundColor $success
-Write-Host "║  ✅ DASHBOARD ADMIN MASTER - 100% IMPLEMENTADO!       ║" -ForegroundColor $success
+Write-Host "║  ✅ DASHBOARD ADMINISTRATIVO - 100% IMPLEMENTADO!    ║" -ForegroundColor $success
 Write-Host "║                                                        ║" -ForegroundColor $success
 Write-Host "║  Arquivo principal: pages/admin-dashboard.html        ║" -ForegroundColor $success
 Write-Host "║  Backend: 12+ novos endpoints                         ║" -ForegroundColor $success

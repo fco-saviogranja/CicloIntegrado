@@ -169,13 +169,13 @@ Bem-vindo ao Ciclo Integrado!
 
 ## 👨‍💼 SEUS ACESSOS COMO PROPRIETÁRIO
 
-### Dashboard Admin Master
+### Dashboard Administrativo
 
 Quando você faz login com suas credenciais, você vê:
 
 ```
 ┌─────────────────────────────────────────────────────┐
-│            PAINEL ADMIN MASTER                       │
+│            PAINEL ADMINISTRATIVO                     │
 ├─────────────────────────────────────────────────────┤
 │                                                     │
 │  📊 ANALYTICS GLOBAIS                              │
@@ -463,7 +463,7 @@ Suporte
    - PUT /admin/municipalities/:id (editar)
    - DELETE /admin/municipalities/:id (deletar)
 
-3. **Criar dashboard Admin Master**
+3. **Criar dashboard Administrativo**
    - Página de analytics global
    - Página de gerenciamento de municípios
    - Página de faturamento

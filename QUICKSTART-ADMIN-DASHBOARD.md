@@ -1,4 +1,4 @@
-# 🚀 GUIA RÁPIDO - Dashboard Admin Master
+# 🚀 GUIA RÁPIDO - Dashboard Administrativo
 
 ## Comece em 5 Minutos
 
@@ -433,5 +433,5 @@ http://localhost:8888/pages/admin-dashboard.html
 
 ---
 
-*Ciclo Integrado - Admin Master Dashboard*  
+*Ciclo Integrado - Dashboard Administrativo*  
 *Guia Rápido v1.0*

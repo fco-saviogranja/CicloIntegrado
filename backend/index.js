@@ -8,6 +8,7 @@ const express = require('express');
 const cors = require('cors');
 const admin = require('firebase-admin');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 
 // Inicializar Express
 const app = express();
@@ -20,7 +21,8 @@ app.use(cors({
     'http://localhost:3000',
     'https://ciclo-integrado.firebaseapp.com',
     'https://ciclo-integrado.web.app',
-    'https://ciclo-integrado.appspot.com'
+    'https://ciclo-integrado.appspot.com',
+    'https://ciclointegrado.online'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   credentials: true
@@ -32,11 +34,15 @@ app.use(express.urlencoded({ extended: true }));
 // Inicializar Firebase Admin SDK
 if (!admin.apps.length) {
   admin.initializeApp({
-    projectId: process.env.GCP_PROJECT_ID || 'ciclo-integrado',
+    projectId: process.env.GCP_PROJECT_ID || 'scenic-lane-480423-t5',
   });
 }
 
 const db = admin.firestore();
+db.settings({
+  ignoreUndefinedProperties: true,
+  databaseId: '(default)'
+});
 const auth = admin.auth();
 
 // ============================================
@@ -86,6 +92,37 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Teste de acesso ao Firestore
+app.get('/test-firestore', async (req, res) => {
+  try {
+    console.log('Testando acesso ao Firestore...');
+    const usersRef = db.collection('users');
+    console.log('Collection ref criada');
+    
+    const snapshot = await usersRef.limit(5).get();
+    console.log('Snapshot obtido, size:', snapshot.size);
+    
+    const users = [];
+    snapshot.forEach(doc => {
+      users.push({ id: doc.id, ...doc.data() });
+    });
+    
+    res.json({
+      success: true,
+      message: 'Firestore acessível',
+      totalUsers: snapshot.size,
+      users: users.map(u => ({ id: u.id, email: u.email, role: u.role }))
+    });
+  } catch (error) {
+    console.error('Erro ao testar Firestore:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message,
+      code: error.code
+    });
+  }
+});
+
 // ============================================
 // ROTAS - AUTENTICAÇÃO
 // ============================================
@@ -108,8 +145,11 @@ app.post('/auth/login', async (req, res) => {
     }
 
     // Buscar usuário no Firestore
+    console.log('Buscando usuário com email:', email);
     const usersRef = db.collection('users');
+    console.log('Users ref criada');
     const snapshot = await usersRef.where('email', '==', email).limit(1).get();
+    console.log('Snapshot retornado, empty:', snapshot.empty, 'size:', snapshot.size);
 
     if (snapshot.empty) {
       return res.status(401).json({
@@ -123,8 +163,14 @@ app.post('/auth/login', async (req, res) => {
     const userData = snapshot.docs[0].data();
     const userId = snapshot.docs[0].id;
 
-    // Validar senha (em produção, use bcrypt)
-    if (userData.password !== password) {
+    // Validar senha usando bcrypt
+    console.log('Comparando senhas...');
+    console.log('Password fornecida:', password);
+    console.log('Password hash:', userData.password);
+    const passwordMatch = await bcrypt.compare(password, userData.password);
+    console.log('Password match result:', passwordMatch);
+    
+    if (!passwordMatch) {
       return res.status(401).json({
         error: {
           code: 'INVALID_PASSWORD',
@@ -151,11 +197,13 @@ app.post('/auth/login', async (req, res) => {
       last_login: new Date().toISOString()
     });
 
+    console.log('Login bem-sucedido para:', userData.email);
     res.json({
+      success: true,
       token,
       user: {
         id: userId,
-        name: userData.name,
+        name: userData.nome || userData.name,
         email: userData.email,
         role: userData.role
       },
@@ -1352,7 +1400,7 @@ exports.cicloIntegradoAPI = app;
 // Para desenvolvimento local
 if (require.main === module) {
   const PORT = process.env.PORT || 8080;
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`Servidor rodando na porta ${PORT}`);
   });
 }
