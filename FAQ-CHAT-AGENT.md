@@ -13,12 +13,10 @@
 Por usuário:
 - ✅ **10 requisições por minuto**
 - ✅ **100 requisições por hora**
-- ✅ **500 requisições por dia**
 
-Por município:
-- ✅ **500 requisições por hora**
-- ✅ **5.000 requisições por dia**
-- ✅ **1.000.000 tokens por mês**
+Por município (depende do plano):
+- ✅ **500-2.000 requisições por dia**
+- ✅ **100.000-2.000.000 tokens por mês**
 
 ### 2. **Limites por Plano de Assinatura**
 
@@ -179,6 +177,11 @@ Inclui:
 - ✅ Sistema de alertas
 - ✅ Logs de auditoria
 - ✅ Interface do usuário
+
+### Dependências Necessárias
+```bash
+npm install express-rate-limit tiktoken openai validator redis
+```
 
 ---
 

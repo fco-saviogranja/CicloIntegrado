@@ -35,6 +35,11 @@ Este documento define os limites e boas práticas para implementação de um mod
 
 ## 🔧 Implementação Técnica
 
+> ⚠️ **Dependências Necessárias**: Antes de implementar, instale as dependências:
+> ```bash
+> npm install express-rate-limit tiktoken openai validator redis
+> ```
+
 ### 1. Rate Limiter no Backend
 
 ```javascript
@@ -67,6 +72,7 @@ module.exports = { chatAgentLimiter };
 ```javascript
 // backend/services/tokenCounter.js
 const { encoding_for_model } = require('tiktoken');
+const admin = require('firebase-admin');
 
 class TokenCounter {
   constructor(model = 'gpt-3.5-turbo') {
