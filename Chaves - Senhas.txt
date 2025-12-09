@@ -1,3 +1,8 @@
+SMTP:
+Username: admin@ciclointegrado.online
+Password: ejft-kkcb-biku-wqbn
+
+
 https://console.cloud.google.com/apis/credentials
 
 IDENTIFICAÇÃO DO GIT: chave SSH - permite seu computador se autenticar no GitHub sem precisar de senha.

@@ -7,7 +7,7 @@
 
 const API_CONFIG = {
   // URL base da API (PRODUÇÃO - Google Cloud Functions)
-  BASE_URL: 'https://us-central1-scenic-lane-480423-t5.cloudfunctions.net/cicloIntegradoAPI',
+  BASE_URL: 'https://us-central1-scenic-lane-480423-t5.cloudfunctions.net/ciclo-integrado',
   
   // Para voltar ao desenvolvimento local, descomente a linha abaixo:
   // BASE_URL: 'http://localhost:8080',

@@ -11,6 +11,7 @@ require('firebase-admin/storage');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 
 // Inicializar Express
 const app = express();
@@ -24,6 +25,8 @@ app.use(cors({
     'https://ciclo-integrado.firebaseapp.com',
     'https://ciclo-integrado.web.app',
     'https://ciclo-integrado.appspot.com',
+    'https://scenic-lane-480423-t5.firebaseapp.com',
+    'https://scenic-lane-480423-t5.web.app',
     'https://ciclointegrado.online'
   ],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -34,6 +37,7 @@ app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
 // Inicializar Firebase Admin SDK
+// Resolve the Firebase project ID across Cloud Functions and local environments.
 // Resolve the Firebase project ID across Cloud Functions and local environments.
 const resolveProjectId = () => {
   if (process.env.GCP_PROJECT_ID) return process.env.GCP_PROJECT_ID;
@@ -53,9 +57,25 @@ const resolveProjectId = () => {
 };
 
 const projectId = resolveProjectId();
-const defaultBucketName = process.env.STORAGE_BUCKET
-  || process.env.FIREBASE_STORAGE_BUCKET
-  || `${projectId}.appspot.com`;
+const resolveStorageBucket = () => {
+  if (process.env.STORAGE_BUCKET) return process.env.STORAGE_BUCKET;
+  if (process.env.FIREBASE_STORAGE_BUCKET) return process.env.FIREBASE_STORAGE_BUCKET;
+
+  if (process.env.FIREBASE_CONFIG) {
+    try {
+      const parsedConfig = JSON.parse(process.env.FIREBASE_CONFIG);
+      if (parsedConfig?.storageBucket) {
+        return parsedConfig.storageBucket;
+      }
+    } catch (configError) {
+      console.error('Erro ao analisar storageBucket do FIREBASE_CONFIG:', configError);
+    }
+  }
+
+  return `${projectId}.appspot.com`;
+};
+
+const defaultBucketName = resolveStorageBucket();
 
 if (!admin.apps.length) {
   admin.initializeApp({
@@ -73,6 +93,34 @@ const auth = admin.auth();
 const storage = admin.storage();
 // Ensure uploads target the expected default bucket when running on Cloud Functions.
 const bucket = storage.bucket(admin.app().options.storageBucket || defaultBucketName);
+
+// ============================================
+// EMAIL
+// ============================================
+
+const mailTransport = nodemailer.createTransport({
+  host: 'mail.privateemail.com',
+  port: 587,
+  secure: false,
+  auth: {
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS
+  }
+});
+
+async function sendMail({ to, subject, html, text }) {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    throw new Error('SMTP credentials are not configured.');
+  }
+
+  await mailTransport.sendMail({
+    from: 'admin@ciclointegrado.online',
+    to,
+    subject,
+    text,
+    html
+  });
+}
 
 // ============================================
 // AUDITORIA
@@ -181,15 +229,135 @@ async function deleteStorageFileByUrl(fileUrl) {
 
   try {
     const publicPrefix = `https://storage.googleapis.com/${bucket.name}/`;
+    const firebasePrefix = `https://firebasestorage.googleapis.com/v0/b/${bucket.name}/o/`;
+
+    let filePath = '';
+
     if (fileUrl.startsWith(publicPrefix)) {
-      const filePath = fileUrl.substring(publicPrefix.length);
-      if (filePath) {
-        await bucket.file(filePath).delete({ ignoreNotFound: true });
-      }
+      filePath = fileUrl.substring(publicPrefix.length);
+    } else if (fileUrl.startsWith(firebasePrefix)) {
+      const pathAndQuery = fileUrl.substring(firebasePrefix.length);
+      const encodedPath = pathAndQuery.split('?')[0];
+      filePath = decodeURIComponent(encodedPath || '');
+    }
+
+    if (filePath) {
+      await bucket.file(filePath).delete({ ignoreNotFound: true });
     }
   } catch (deleteError) {
     console.error('Erro ao remover arquivo antigo do Storage:', deleteError);
   }
+}
+
+// ============================================
+// CUPONS - HELPERS
+// ============================================
+
+const COUPON_TYPE_ALIASES = {
+  percentage: 'percentage',
+  percent: 'percentage',
+  percentual: 'percentage',
+  fixed: 'fixed',
+  value: 'fixed',
+  valor: 'fixed',
+  amount: 'fixed'
+};
+
+function normalizeCouponType(raw) {
+  if (!raw && raw !== 0) {
+    return 'percentage';
+  }
+
+  const normalized = raw.toString().trim().toLowerCase();
+  return COUPON_TYPE_ALIASES[normalized] || 'percentage';
+}
+
+function normalizeCouponDateValue(raw) {
+  if (!raw && raw !== 0) {
+    return null;
+  }
+
+  if (raw instanceof Date) {
+    return Number.isNaN(raw.getTime()) ? null : raw.toISOString();
+  }
+
+  if (raw instanceof admin.firestore.Timestamp) {
+    return raw.toDate().toISOString();
+  }
+
+  try {
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+  } catch (error) {
+    return null;
+  }
+}
+
+function normalizeCouponNumber(raw) {
+  if (raw === null || raw === undefined || raw === '') {
+    return null;
+  }
+
+  const parsed = Number(raw);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function buildCouponResponse(docId, data) {
+  if (!data || typeof data !== 'object') {
+    return {
+      id: docId || null
+    };
+  }
+
+  const createdAt = normalizeCouponDateValue(data.created_at);
+  const updatedAt = normalizeCouponDateValue(data.updated_at);
+  const validFrom = normalizeCouponDateValue(data.valid_from);
+  const validUntil = normalizeCouponDateValue(data.valid_until);
+  const usageCount = normalizeCouponNumber(data.usage_count) || 0;
+  const maxUses = normalizeCouponNumber(data.max_uses);
+
+  const baseStatus = (data.status || 'active').toString().toLowerCase();
+  const now = Date.now();
+  const fromTime = validFrom ? new Date(validFrom).getTime() : null;
+  const untilTime = validUntil ? new Date(validUntil).getTime() : null;
+
+  let currentStatus = baseStatus;
+  if (baseStatus !== 'inactive') {
+    if (fromTime && fromTime > now) {
+      currentStatus = 'scheduled';
+    } else if (untilTime && untilTime < now) {
+      currentStatus = 'expired';
+    } else {
+      currentStatus = 'active';
+    }
+  }
+
+  return {
+    id: docId || null,
+    code: data.code || '',
+    description: data.description || '',
+    discount_type: data.discount_type || '',
+    discount_value: normalizeCouponNumber(data.discount_value) || 0,
+    percent_off: normalizeCouponNumber(data.percent_off),
+    amount_off: normalizeCouponNumber(data.amount_off),
+    scope: data.scope || (data.municipio_id ? 'municipality' : 'global'),
+    municipio_id: data.municipio_id || null,
+    municipio_nome: data.municipio_nome || null,
+    valid_from: validFrom,
+    valid_until: validUntil,
+    max_uses: maxUses,
+    usage_count: usageCount,
+    status: baseStatus,
+    current_status: currentStatus,
+    created_at: createdAt,
+    created_by: data.created_by || null,
+    updated_at: updatedAt,
+    metadata: data.metadata || null
+  };
 }
 
 // ============================================
@@ -890,10 +1058,15 @@ app.post('/admin/municipalities', authenticateToken, isAdminMaster, async (req, 
       });
     }
 
-    const licenseType = (license_type || plano || 'standard').toLowerCase();
-    const licenseExpires = license_expires || data_vencimento_licenca
-      ? new Date(data_vencimento_licenca || license_expires).toISOString()
-      : new Date(new Date().getTime() + 365 * 24 * 60 * 60 * 1000).toISOString();
+    const licenseTypeRaw = license_type || plano || '';
+    const licenseType = licenseTypeRaw ? licenseTypeRaw.toString().toLowerCase() : 'pending';
+
+    let licenseExpires = null;
+    const licenseSource = license_expires || data_vencimento_licenca;
+    if (licenseSource) {
+      const parsedLicenseDate = new Date(licenseSource);
+      licenseExpires = Number.isNaN(parsedLicenseDate.getTime()) ? null : parsedLicenseDate.toISOString();
+    }
 
     const municipio = {
       municipio_id: id,
@@ -913,7 +1086,26 @@ app.post('/admin/municipalities', authenticateToken, isAdminMaster, async (req, 
       contato_email: contato_email || '',
       contato_telefone: contato_telefone || '',
       observacoes: observacoes || '',
-      documentos: Array.isArray(documentos) ? documentos : (documentos ? [documentos].flat() : [])
+      documentos: Array.isArray(documentos) ? documentos : (documentos ? [documentos].flat() : []),
+      custom_monthly_value: null,
+      billing_status: 'pending',
+      billing: {
+        plan_type: licenseType !== 'pending' ? licenseType : null,
+        monthly_value: null,
+        effective_monthly_value: null,
+        installments: null,
+        payment_day: null,
+        coupon_code: null,
+        coupon_discount_type: null,
+        coupon_discount_value: null,
+        coupon_valid_until: null,
+        coupon_applied_at: null,
+        contract_start: null,
+        contract_end: licenseExpires,
+        notes: '',
+        updated_at: null,
+        updated_by: null
+      }
     };
 
     await db.collection('municipalities').doc(id).set(municipio);
@@ -1595,205 +1787,6 @@ app.put('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req, r
 
     const updateData = {};
     const validRoles = ['admin_master', 'admin_municipio', 'gestor_contrato', 'fiscal_contrato'];
-
-    app.post('/admin/users/:user_id/photo', authenticateToken, isAdminMaster, async (req, res) => {
-      try {
-        const { user_id } = req.params;
-        const { image_base64 } = req.body || {};
-
-        if (!user_id) {
-          return res.status(400).json({
-            error: {
-              code: 'MISSING_USER_ID',
-              message: 'Usuário inválido para upload de foto'
-            }
-          });
-        }
-
-        if (req.user?.id !== user_id) {
-          return res.status(403).json({
-            error: {
-              code: 'FORBIDDEN',
-              message: 'Você só pode atualizar a sua própria foto de perfil'
-            }
-          });
-        }
-
-        const parsedImage = parseImageDataUrl(image_base64);
-        if (!parsedImage) {
-          return res.status(400).json({
-            error: {
-              code: 'INVALID_IMAGE',
-              message: 'Formato de imagem inválido'
-            }
-          });
-        }
-
-        const userRef = db.collection('users').doc(user_id);
-        const beforeSnapshot = await userRef.get();
-
-        if (!beforeSnapshot.exists) {
-          return res.status(404).json({
-            error: {
-              code: 'NOT_FOUND',
-              message: 'Usuário não encontrado'
-            }
-          });
-        }
-
-        const beforeData = beforeSnapshot.data();
-
-        const uniqueId = crypto.randomUUID();
-        const filePath = `profile_photos/${user_id}/${uniqueId}.${parsedImage.extension}`;
-        const file = bucket.file(filePath);
-
-        await file.save(parsedImage.buffer, {
-          metadata: {
-            contentType: parsedImage.mimeType,
-            cacheControl: 'public,max-age=3600'
-          }
-        });
-
-        await file.makePublic();
-
-        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
-
-        await userRef.update({
-          photo_url: publicUrl,
-          updated_at: new Date().toISOString(),
-          updated_by: req.user.email
-        });
-
-        if (beforeData?.photo_url && beforeData.photo_url !== publicUrl) {
-          await deleteStorageFileByUrl(beforeData.photo_url);
-        }
-
-        const afterSnapshot = await userRef.get();
-        const afterData = afterSnapshot.data();
-
-        await logAuditEvent({
-          entityType: 'user',
-          entityId: user_id,
-          action: 'update',
-          performedBy: req.user.email,
-          performedById: req.user.id,
-          performedByRole: req.user.role,
-          before: beforeData,
-          after: afterData,
-          metadata: {
-            updated_fields: ['photo_url']
-          }
-        });
-
-        res.json({
-          message: 'Foto de perfil atualizada com sucesso',
-          photo_url: publicUrl
-        });
-      } catch (error) {
-        if (error && error.message === 'IMAGE_TOO_LARGE') {
-          return res.status(413).json({
-            error: {
-              code: 'IMAGE_TOO_LARGE',
-              message: 'Imagem excede o limite de 4MB'
-            }
-          });
-        }
-
-        if (error && error.message === 'UNSUPPORTED_IMAGE_TYPE') {
-          return res.status(415).json({
-            error: {
-              code: 'UNSUPPORTED_IMAGE_TYPE',
-              message: 'Formato de imagem não suportado. Utilize JPG, PNG ou WEBP.'
-            }
-          });
-        }
-
-        console.error('Erro ao atualizar foto de perfil:', error);
-        res.status(500).json({
-          error: {
-            code: 'PHOTO_UPLOAD_ERROR',
-            message: 'Erro ao atualizar foto de perfil'
-          }
-        });
-      }
-    });
-
-    app.delete('/admin/users/:user_id/photo', authenticateToken, isAdminMaster, async (req, res) => {
-      try {
-        const { user_id } = req.params;
-
-        if (!user_id) {
-          return res.status(400).json({
-            error: {
-              code: 'MISSING_USER_ID',
-              message: 'Usuário inválido para remoção de foto'
-            }
-          });
-        }
-
-        if (req.user?.id !== user_id) {
-          return res.status(403).json({
-            error: {
-              code: 'FORBIDDEN',
-              message: 'Você só pode remover a sua própria foto de perfil'
-            }
-          });
-        }
-
-        const userRef = db.collection('users').doc(user_id);
-        const beforeSnapshot = await userRef.get();
-
-        if (!beforeSnapshot.exists) {
-          return res.status(404).json({
-            error: {
-              code: 'NOT_FOUND',
-              message: 'Usuário não encontrado'
-            }
-          });
-        }
-
-        const beforeData = beforeSnapshot.data();
-
-        if (beforeData?.photo_url) {
-          await deleteStorageFileByUrl(beforeData.photo_url);
-        }
-
-        await userRef.update({
-          photo_url: '',
-          updated_at: new Date().toISOString(),
-          updated_by: req.user.email
-        });
-
-        const afterSnapshot = await userRef.get();
-        const afterData = afterSnapshot.data();
-
-        await logAuditEvent({
-          entityType: 'user',
-          entityId: user_id,
-          action: 'update',
-          performedBy: req.user.email,
-          performedById: req.user.id,
-          performedByRole: req.user.role,
-          before: beforeData,
-          after: afterData,
-          metadata: {
-            updated_fields: ['photo_url']
-          }
-        });
-
-        res.json({
-          message: 'Foto de perfil removida com sucesso'
-        });
-      } catch (error) {
-        console.error('Erro ao remover foto de perfil:', error);
-        res.status(500).json({
-          error: {
-            code: 'PHOTO_DELETE_ERROR',
-            message: 'Erro ao remover foto de perfil'
-          }
-        });
-      }
-    });
     const statusNormalized = typeof status === 'string' ? status.toLowerCase() : undefined;
 
     if (Object.prototype.hasOwnProperty.call(req.body, 'name')) {
@@ -1884,6 +1877,216 @@ app.put('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req, r
       error: {
         code: 'UPDATE_ERROR',
         message: 'Erro ao atualizar usuário'
+      }
+    });
+  }
+});
+
+/**
+ * POST /admin/users/:user_id/photo
+ * Atualizar foto de perfil (admin master pode atualizar qualquer usuário, demais apenas a própria)
+ */
+app.post('/admin/users/:user_id/photo', authenticateToken, async (req, res) => {
+  try {
+    const { user_id } = req.params;
+    const { image_base64 } = req.body || {};
+
+    if (!user_id) {
+      return res.status(400).json({
+        error: {
+          code: 'MISSING_USER_ID',
+          message: 'Usuário inválido para upload de foto'
+        }
+      });
+    }
+
+    const isSelf = req.user?.id === user_id;
+    const isOwner = req.user?.role === 'admin_master';
+    if (!isSelf && !isOwner) {
+      return res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Você não tem permissão para alterar a foto deste usuário'
+        }
+      });
+    }
+
+    const parsedImage = parseImageDataUrl(image_base64);
+    if (!parsedImage) {
+      return res.status(400).json({
+        error: {
+          code: 'INVALID_IMAGE',
+          message: 'Formato de imagem inválido'
+        }
+      });
+    }
+
+    const userRef = db.collection('users').doc(user_id);
+    const beforeSnapshot = await userRef.get();
+
+    if (!beforeSnapshot.exists) {
+      return res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Usuário não encontrado'
+        }
+      });
+    }
+
+    const beforeData = beforeSnapshot.data();
+
+    const uniqueId = crypto.randomUUID();
+    const filePath = `profile_photos/${user_id}/${uniqueId}.${parsedImage.extension}`;
+    const file = bucket.file(filePath);
+
+    await file.save(parsedImage.buffer, {
+      metadata: {
+        contentType: parsedImage.mimeType,
+        cacheControl: 'public,max-age=3600'
+      }
+    });
+
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+
+    await userRef.update({
+      photo_url: publicUrl,
+      updated_at: new Date().toISOString(),
+      updated_by: req.user.email
+    });
+
+    if (beforeData?.photo_url && beforeData.photo_url !== publicUrl) {
+      await deleteStorageFileByUrl(beforeData.photo_url);
+    }
+
+    const afterSnapshot = await userRef.get();
+    const afterData = afterSnapshot.data();
+
+    await logAuditEvent({
+      entityType: 'user',
+      entityId: user_id,
+      action: 'update',
+      performedBy: req.user.email,
+      performedById: req.user.id,
+      performedByRole: req.user.role,
+      before: beforeData,
+      after: afterData,
+      metadata: {
+        updated_fields: ['photo_url']
+      }
+    });
+
+    res.json({
+      message: 'Foto de perfil atualizada com sucesso',
+      photo_url: publicUrl
+    });
+  } catch (error) {
+    if (error && error.message === 'IMAGE_TOO_LARGE') {
+      return res.status(413).json({
+        error: {
+          code: 'IMAGE_TOO_LARGE',
+          message: 'Imagem excede o limite de 4MB'
+        }
+      });
+    }
+
+    if (error && error.message === 'UNSUPPORTED_IMAGE_TYPE') {
+      return res.status(415).json({
+        error: {
+          code: 'UNSUPPORTED_IMAGE_TYPE',
+          message: 'Formato de imagem não suportado. Utilize JPG, PNG ou WEBP.'
+        }
+      });
+    }
+
+    console.error('Erro ao atualizar foto de perfil:', error);
+    res.status(500).json({
+      error: {
+        code: 'PHOTO_UPLOAD_ERROR',
+        message: 'Erro ao atualizar foto de perfil'
+      }
+    });
+  }
+});
+
+/**
+ * DELETE /admin/users/:user_id/photo
+ * Remover foto de perfil (admin master pode remover qualquer usuário, demais apenas a própria)
+ */
+app.delete('/admin/users/:user_id/photo', authenticateToken, async (req, res) => {
+  try {
+    const { user_id } = req.params;
+
+    if (!user_id) {
+      return res.status(400).json({
+        error: {
+          code: 'MISSING_USER_ID',
+          message: 'Usuário inválido para remoção de foto'
+        }
+      });
+    }
+
+    const isSelf = req.user?.id === user_id;
+    const isOwner = req.user?.role === 'admin_master';
+    if (!isSelf && !isOwner) {
+      return res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Você não tem permissão para remover a foto deste usuário'
+        }
+      });
+    }
+
+    const userRef = db.collection('users').doc(user_id);
+    const beforeSnapshot = await userRef.get();
+
+    if (!beforeSnapshot.exists) {
+      return res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Usuário não encontrado'
+        }
+      });
+    }
+
+    const beforeData = beforeSnapshot.data();
+
+    if (beforeData?.photo_url) {
+      await deleteStorageFileByUrl(beforeData.photo_url);
+    }
+
+    await userRef.update({
+      photo_url: '',
+      updated_at: new Date().toISOString(),
+      updated_by: req.user.email
+    });
+
+    const afterSnapshot = await userRef.get();
+    const afterData = afterSnapshot.data();
+
+    await logAuditEvent({
+      entityType: 'user',
+      entityId: user_id,
+      action: 'update',
+      performedBy: req.user.email,
+      performedById: req.user.id,
+      performedByRole: req.user.role,
+      before: beforeData,
+      after: afterData,
+      metadata: {
+        updated_fields: ['photo_url']
+      }
+    });
+
+    res.json({
+      message: 'Foto de perfil removida com sucesso',
+      photo_url: ''
+    });
+  } catch (error) {
+    console.error('Erro ao remover foto de perfil:', error);
+    res.status(500).json({
+      error: {
+        code: 'PHOTO_DELETE_ERROR',
+        message: 'Erro ao remover foto de perfil'
       }
     });
   }
@@ -2056,6 +2259,32 @@ app.get('/admin/audit-logs', authenticateToken, isAdminMaster, async (req, res) 
 });
 
 // ============================================
+// EMAIL - ROTAS DE TESTE
+// ============================================
+
+app.post('/admin/test-email', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const { to } = req.body;
+
+    if (!to) {
+      return res.status(400).json({ error: 'Destinatário obrigatório.' });
+    }
+
+    await sendMail({
+      to,
+      subject: 'Teste de e-mail - Ciclo Integrado',
+      html: '<p>Funcionou!</p>',
+      text: 'Funcionou!'
+    });
+
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Erro ao enviar e-mail de teste:', error);
+    res.status(500).json({ error: 'Falha ao enviar e-mail.' });
+  }
+});
+
+// ============================================
 // ROTAS - RELATÓRIOS E FATURAMENTO
 // ============================================
 
@@ -2076,50 +2305,93 @@ app.get('/admin/revenue', authenticateToken, isAdminMaster, async (req, res) => 
     const planLabels = {
       standard: 'Standard',
       profissional: 'Profissional',
-      premium: 'Premium'
+      premium: 'Premium',
+      pending: 'Pendente',
+      personalizado: 'Personalizado'
     };
 
     const municipiosReceita = [];
-    const planosResumo = {
-      standard: { quantidade: 0, receitaMensal: 0 },
-      profissional: { quantidade: 0, receitaMensal: 0 },
-      premium: { quantidade: 0, receitaMensal: 0 }
-    };
+    const planosResumo = {};
 
     let receitaMensalTotal = 0;
     let municipiosAtivos = 0;
 
+    const now = new Date();
+
     municipiosSnapshot.docs.forEach(doc => {
-      const data = doc.data();
+      const data = doc.data() || {};
       const municipioId = doc.id;
       const nome = data.nome || data.municipio_nome || data.cidade || municipioId;
       const estado = (data.estado || '').toUpperCase();
-      const plano = (data.license_type || data.plano || 'standard').toLowerCase();
       const status = (data.status || 'ativo').toString().toLowerCase();
       const isActive = status === 'ativo' || status === 'active';
-      const price = planPrices[plano] || 0;
 
-      if (planosResumo[plano]) {
-        planosResumo[plano].quantidade += 1;
-        if (isActive) {
-          planosResumo[plano].receitaMensal += price;
+      const billing = data.billing || {};
+      const planType = (billing.plan_type || data.license_type || 'pending').toString().toLowerCase();
+      const baseMonthly = Number.isFinite(billing.monthly_value)
+        ? Number(billing.monthly_value)
+        : Number.isFinite(data.custom_monthly_value)
+          ? Number(data.custom_monthly_value)
+          : planPrices[planType] || 0;
+
+      const couponValidUntil = billing.coupon_valid_until ? new Date(billing.coupon_valid_until) : null;
+      const isCouponValid = billing.coupon_code
+        ? (!couponValidUntil || couponValidUntil >= now)
+        : false;
+
+      let discountValue = 0;
+      if (isCouponValid) {
+        const discountType = (billing.coupon_discount_type || '').toString().toLowerCase();
+        const discountRaw = Number(billing.coupon_discount_value) || 0;
+        if (discountType === 'percentage') {
+          discountValue = (baseMonthly * discountRaw) / 100;
+        } else {
+          discountValue = discountRaw;
         }
       }
 
-      if (isActive) {
+      const storedEffective = Number(billing.effective_monthly_value);
+      const effectiveMonthly = Number.isFinite(storedEffective)
+        ? storedEffective
+        : Math.max(0, baseMonthly - discountValue);
+
+      const billingStatus = billing.status
+        || (planType && effectiveMonthly > 0 ? 'active' : 'pending');
+
+      const contratosStatus = billingStatus === 'active' && isActive;
+
+      if (!planosResumo[planType]) {
+        planosResumo[planType] = { quantidade: 0, receitaMensal: 0 };
+      }
+
+      planosResumo[planType].quantidade += 1;
+      if (contratosStatus) {
+        planosResumo[planType].receitaMensal += effectiveMonthly;
+        receitaMensalTotal += effectiveMonthly;
         municipiosAtivos += 1;
-        receitaMensalTotal += price;
       }
 
       municipiosReceita.push({
         municipio_id: municipioId,
         nome,
         estado,
-        plano,
-        plano_label: planLabels[plano] || plano,
-        status: isActive ? 'ativo' : 'inativo',
-        receita_mensal: isActive ? price : 0,
-        receita_anual: isActive ? price * 12 : 0
+        plano: planType,
+        plano_label: planLabels[planType] || planType,
+        status: contratosStatus ? 'ativo' : 'inativo',
+        billing_status: billingStatus,
+        receita_mensal: contratosStatus ? effectiveMonthly : 0,
+        receita_anual: contratosStatus ? effectiveMonthly * 12 : 0,
+        valor_bruto: baseMonthly,
+        valor_desconto: contratosStatus ? discountValue : 0,
+        valor_liquido: contratosStatus ? effectiveMonthly : Math.max(0, baseMonthly - discountValue),
+        parcelas: billing.installments || null,
+        dia_cobranca: billing.payment_day || null,
+        cupom_aplicado: billing.coupon_code || null,
+        cupom_tipo: billing.coupon_discount_type || null,
+        cupom_valor: billing.coupon_discount_value || null,
+        cupom_valid_until: billing.coupon_valid_until || null,
+        contrato_inicio: billing.contract_start || null,
+        contrato_fim: billing.contract_end || data.license_expires || null
       });
     });
 
@@ -2161,6 +2433,248 @@ app.get('/admin/revenue', authenticateToken, isAdminMaster, async (req, res) => 
       error: {
         code: 'REVENUE_ERROR',
         message: 'Erro ao obter dados de receita'
+      }
+    });
+  }
+});
+
+/**
+ * GET /admin/coupons
+ * Listar cupons de desconto (apenas proprietário)
+ */
+app.get('/admin/coupons', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const { municipio_id, status } = req.query;
+
+    let snapshot;
+    try {
+      snapshot = await db.collection('coupons').orderBy('created_at', 'desc').get();
+    } catch (orderError) {
+      console.warn('Fallback para listagem de cupons sem ordenação:', orderError?.message || orderError);
+      snapshot = await db.collection('coupons').get();
+    }
+
+    const mapped = snapshot.docs.map(doc => buildCouponResponse(doc.id, doc.data()));
+
+    const municipioFilter = typeof municipio_id === 'string' && municipio_id !== '' && municipio_id !== 'all'
+      ? municipio_id
+      : null;
+    const statusFilter = typeof status === 'string' && status !== '' && status !== 'all'
+      ? status.toLowerCase()
+      : null;
+
+    const coupons = mapped
+      .filter(coupon => {
+        if (municipioFilter && (coupon.municipio_id || '') !== municipioFilter) {
+          return false;
+        }
+        if (statusFilter && (coupon.current_status || coupon.status || '').toLowerCase() !== statusFilter) {
+          return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const aTime = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const bTime = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return bTime - aTime;
+      });
+
+    res.json({
+      coupons,
+      total: coupons.length
+    });
+  } catch (error) {
+    console.error('Erro ao listar cupons:', error);
+    res.status(500).json({
+      error: {
+        code: 'COUPON_LIST_ERROR',
+        message: 'Erro ao listar cupons de desconto'
+      }
+    });
+  }
+});
+
+/**
+ * POST /admin/coupons
+ * Criar cupom de desconto (apenas proprietário)
+ */
+app.post('/admin/coupons', authenticateToken, isAdminMaster, async (req, res) => {
+  try {
+    const {
+      code,
+      coupon_code,
+      descricao,
+      description,
+      discount_type,
+      discountType,
+      discount_value,
+      value,
+      percent_off,
+      amount_off,
+      max_uses,
+      usage_limit,
+      municipio_id,
+      municipioId,
+      valid_from,
+      validFrom,
+      valid_until,
+      validUntil
+    } = req.body || {};
+
+    const normalizedCode = (code || coupon_code || '').toString().trim().toUpperCase();
+    if (!normalizedCode || normalizedCode.length < 3) {
+      return res.status(400).json({
+        error: {
+          code: 'COUPON_INVALID_CODE',
+          message: 'Informe um código de cupom com pelo menos 3 caracteres.'
+        }
+      });
+    }
+
+    if (normalizedCode.length > 40) {
+      return res.status(400).json({
+        error: {
+          code: 'COUPON_INVALID_CODE_LENGTH',
+          message: 'O código do cupom deve ter no máximo 40 caracteres.'
+        }
+      });
+    }
+
+    const type = normalizeCouponType(discount_type || discountType);
+
+    const rawValue = discount_value ?? value ?? (type === 'percentage' ? percent_off : amount_off);
+    let discountValue = normalizeCouponNumber(rawValue);
+    if (!discountValue || discountValue <= 0) {
+      return res.status(400).json({
+        error: {
+          code: 'COUPON_INVALID_VALUE',
+          message: 'Informe um valor de desconto válido.'
+        }
+      });
+    }
+
+    if (type === 'percentage' && discountValue > 100) {
+      return res.status(400).json({
+        error: {
+          code: 'COUPON_PERCENT_LIMIT',
+          message: 'O percentual de desconto deve ser menor ou igual a 100%.'
+        }
+      });
+    }
+
+    discountValue = Number(discountValue.toFixed(2));
+
+    let municipioTarget = municipio_id ?? municipioId ?? null;
+    if (municipioTarget === '' || municipioTarget === 'all') {
+      municipioTarget = null;
+    }
+
+    let municipioNome = null;
+    if (municipioTarget) {
+      const municipioDoc = await db.collection('municipalities').doc(municipioTarget).get();
+      if (!municipioDoc.exists) {
+        return res.status(400).json({
+          error: {
+            code: 'COUPON_INVALID_MUNICIPIO',
+            message: 'Município informado não foi encontrado.'
+          }
+        });
+      }
+      const municipioData = municipioDoc.data() || {};
+      municipioNome = municipioData.municipio_nome
+        || municipioData.nome
+        || municipioData.cidade
+        || municipioDoc.id;
+    }
+
+    const validFromIso = normalizeCouponDateValue(valid_from || validFrom);
+    const validUntilIso = normalizeCouponDateValue(valid_until || validUntil);
+
+    if (validFromIso && validUntilIso && new Date(validFromIso) > new Date(validUntilIso)) {
+      return res.status(400).json({
+        error: {
+          code: 'COUPON_INVALID_PERIOD',
+          message: 'A data final deve ser posterior à data inicial.'
+        }
+      });
+    }
+
+    let maxUsesValue = normalizeCouponNumber(max_uses ?? usage_limit);
+    if (maxUsesValue !== null && maxUsesValue !== undefined) {
+      maxUsesValue = Math.floor(maxUsesValue);
+      if (!Number.isFinite(maxUsesValue) || maxUsesValue <= 0) {
+        return res.status(400).json({
+          error: {
+            code: 'COUPON_INVALID_LIMIT',
+            message: 'O limite de usos deve ser um número inteiro positivo.'
+          }
+        });
+      }
+    } else {
+      maxUsesValue = null;
+    }
+
+    const existingSnapshot = await db.collection('coupons')
+      .where('code', '==', normalizedCode)
+      .limit(1)
+      .get();
+
+    if (!existingSnapshot.empty) {
+      return res.status(409).json({
+        error: {
+          code: 'COUPON_ALREADY_EXISTS',
+          message: 'Já existe um cupom registrado com este código.'
+        }
+      });
+    }
+
+    const nowIso = new Date().toISOString();
+    const coupon = {
+      code: normalizedCode,
+      description: description || descricao || '',
+      discount_type: type,
+      discount_value: discountValue,
+      percent_off: type === 'percentage' ? discountValue : null,
+      amount_off: type === 'fixed' ? discountValue : null,
+      scope: municipioTarget ? 'municipality' : 'global',
+      municipio_id: municipioTarget,
+      municipio_nome: municipioNome,
+      valid_from: validFromIso,
+      valid_until: validUntilIso,
+      max_uses: maxUsesValue,
+      usage_count: 0,
+      status: 'active',
+      created_at: nowIso,
+      created_by: req.user.email || null,
+      updated_at: nowIso
+    };
+
+    const couponRef = await db.collection('coupons').add(coupon);
+
+    await logAuditEvent({
+      entityType: 'coupon',
+      entityId: couponRef.id,
+      action: 'create',
+      performedBy: req.user.email,
+      performedById: req.user.id,
+      performedByRole: req.user.role,
+      after: coupon,
+      metadata: {
+        scope: coupon.scope,
+        municipio_id: municipioTarget
+      }
+    });
+
+    res.status(201).json({
+      message: 'Cupom criado com sucesso',
+      coupon: buildCouponResponse(couponRef.id, coupon)
+    });
+  } catch (error) {
+    console.error('Erro ao criar cupom:', error);
+    res.status(500).json({
+      error: {
+        code: 'COUPON_CREATE_ERROR',
+        message: 'Erro ao criar cupom de desconto'
       }
     });
   }
@@ -2226,33 +2740,71 @@ app.get('/admin/reports/municipality-stats', authenticateToken, isAdminMaster, a
 
     for (const muniDoc of municipiosSnapshot.docs) {
       const municipio = muniDoc.data();
-      
-      // Contar usuários
+
+      const municipioNome = municipio.municipio_nome
+        || municipio.nome
+        || municipio.cidade
+        || muniDoc.id;
+
+      const maxUsersRaw = municipio.max_users
+        ?? municipio.max_usuarios
+        ?? municipio.billing?.max_users
+        ?? municipio.billing?.max_usuarios;
+      const maxUsersNumber = Number(maxUsersRaw);
+      const hasUsersLimit = Number.isFinite(maxUsersNumber) && maxUsersNumber > 0;
+
       const usersSnapshot = await db.collection('users')
         .where('municipio_id', '==', muniDoc.id)
         .get();
-      
-      // Contar contratos
+      const currentUsers = usersSnapshot.size;
+      const usersUsagePercent = hasUsersLimit
+        ? Math.min(100, Math.round((currentUsers / maxUsersNumber) * 100))
+        : null;
+
+      const maxContractsRaw = municipio.max_contracts
+        ?? municipio.max_contratos
+        ?? municipio.billing?.max_contracts
+        ?? municipio.billing?.max_contratos;
+      const maxContractsNumber = Number(maxContractsRaw);
+      const hasContractsLimit = Number.isFinite(maxContractsNumber) && maxContractsNumber > 0;
+
       const contratosSnapshot = await db.collection('contratos')
         .where('municipio_id', '==', muniDoc.id)
         .get();
+      const currentContracts = contratosSnapshot.size;
+      const contractsUsagePercent = hasContractsLimit
+        ? Math.min(100, Math.round((currentContracts / maxContractsNumber) * 100))
+        : null;
+
+      const licenseType = municipio.license_type
+        || municipio.billing?.plan_type
+        || municipio.plano
+        || 'pending';
+      const licenseExpires = municipio.license_expires
+        || municipio.data_vencimento_licenca
+        || municipio.billing?.contract_end
+        || null;
+      const status = municipio.status
+        || municipio.billing_status
+        || municipio.billing?.status
+        || 'pending';
 
       stats.push({
         municipio_id: muniDoc.id,
-        municipio_nome: municipio.municipio_nome,
-        license_type: municipio.license_type,
+        municipio_nome: municipioNome,
+        license_type: licenseType,
         users: {
-          current: usersSnapshot.size,
-          max: municipio.max_users,
-          usage_percent: Math.round((usersSnapshot.size / municipio.max_users) * 100)
+          current: currentUsers,
+          max: hasUsersLimit ? maxUsersNumber : null,
+          usage_percent: usersUsagePercent
         },
         contracts: {
-          current: contratosSnapshot.size,
-          max: municipio.max_contracts,
-          usage_percent: Math.round((contratosSnapshot.size / municipio.max_contracts) * 100)
+          current: currentContracts,
+          max: hasContractsLimit ? maxContractsNumber : null,
+          usage_percent: contractsUsagePercent
         },
-        license_expires: municipio.license_expires,
-        status: municipio.status
+        license_expires: licenseExpires,
+        status
       });
     }
 
@@ -2307,3 +2859,5 @@ if (require.main === module) {
     console.log(`Servidor rodando na porta ${PORT}`);
   });
 }
+
+

@@ -17,7 +17,7 @@ Você (Proprietário)
 ```
 
 **Suas Credenciais:**
-- Email: `admin@ciclo-integrado.com`
+- Email: `admin@ciclointegrado.online`
 - Role: `admin_master` (Proprietário)
 - Acesso: Dashboard com dados de TODOS os municípios
 

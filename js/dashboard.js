@@ -35,6 +35,11 @@ let municipioBeingEdited = null;
 let usuariosTotalCount = 0;
 let municipiosTotalCount = 0;
 let receitaData = null;
+let couponsData = [];
+let couponsLoadError = null;
+let billingMunicipioSelected = '';
+let billingFormIsLoading = false;
+let billingMunicipioData = null;
 let municipioPendingDelete = null;
 let usuarioBeingEdited = null;
 let usuarioPendingDelete = null;
@@ -50,12 +55,41 @@ let auditHasMore = false;
 let auditInitialized = false;
 const auditSensitiveKeys = ['password', 'senha', 'token', 'access_token', 'refresh_token', 'secret'];
 
+let reportsInitialized = false;
+const reportsState = {
+    expiring: {
+        data: [],
+        isLoading: false,
+        rangeDays: 30
+    },
+    capacity: {
+        data: [],
+        isLoading: false
+    },
+    needsRefresh: true,
+    lastLoadedAt: null
+};
+
+const reportsFilters = {
+    plan: 'all',
+    status: 'all',
+    onlyCritical: false
+};
+
 let currentUser = API.getCurrentUser();
 const profileState = {
     data: null,
     photoPreview: '',
     photoToUpload: null,
     isUploading: false,
+    removePhoto: false
+};
+
+const editUserPhotoState = {
+    usuarioId: null,
+    originalUrl: '',
+    preview: '',
+    photoToUpload: null,
     removePhoto: false
 };
 
@@ -74,7 +108,7 @@ const sectionMetadata = {
     },
     faturamento: {
         title: 'Faturamento',
-        subtitle: 'Módulo em desenvolvimento'
+        subtitle: 'Acompanhe receitas, planos e projeções financeiras'
     },
     relatorios: {
         title: 'Relatórios',
@@ -125,6 +159,17 @@ function switchSection(section) {
         auditInitialized = true;
         loadAuditLogs(true).catch(error => console.error('Erro ao carregar auditoria:', error));
     }
+
+    if (targetSection === 'relatorios') {
+        setupReportsControls();
+        if (reportsState.needsRefresh || !reportsInitialized) {
+            loadReportsData({ force: true }).catch(error => console.error('Erro ao carregar relatórios:', error));
+        } else {
+            updateReportsOverview();
+            renderExpiringLicenses();
+            renderCapacityTable();
+        }
+    }
 }
 
 // ============================================
@@ -137,38 +182,48 @@ function switchSection(section) {
 async function loadDashboardData() {
     try {
         showLoading(true);
-        
-        // Carregar dados em paralelo
-        const [dashboard, municipios, receita, usuarios] = await Promise.all([
+
+        let couponsError = null;
+        const [dashboard, municipios, receita, usuarios, cupons] = await Promise.all([
             API.getDashboard().catch(() => ({
                 total_municipios: 0,
                 municipios_ativos: 0,
                 total_usuarios: 0,
                 usuarios_ativos: 0,
-                contratos_totais: 0,
-                contratos_ativos: 0,
                 receita_mensal: 0,
                 receita_anual: 0,
-                licencas_vencendo_30_dias: 0
+                contratos_totais: 0,
+                contratos_ativos: 0,
+                planos: {}
             })),
-            API.getMunicipios().catch(err => ({ municipios: [] })),
+            API.getMunicipios().catch(() => ({
+                municipalities: [],
+                total: 0
+            })),
             API.getReceita().catch(() => ({
                 receita_mensal_total: 0,
                 receita_anual_projetada: 0,
                 ticket_medio_municipio: 0,
                 municipios_ativos: 0,
-                planos: {}
+                planos: {},
+                historico: []
             })),
-            API.getUsuarios().catch(() => ({ usuarios: [] }))
+            API.getUsuarios().catch(() => ({ usuarios: [] })),
+            API.getCupons().catch(error => {
+                couponsError = error;
+                return { coupons: [] };
+            })
         ]);
-        
+
         dashboardData = dashboard;
 
         const municipiosList = municipios?.municipalities
             || municipios?.municipios
             || municipios?.data
             || municipios;
-        municipiosData = Array.isArray(municipiosList) ? municipiosList : [];
+        municipiosData = Array.isArray(municipiosList)
+            ? municipiosList.map(normalizeMunicipioRecord).filter(Boolean)
+            : [];
         municipiosTotalCount = typeof municipios?.total === 'number'
             ? municipios.total
             : municipiosData.length;
@@ -180,17 +235,48 @@ async function loadDashboardData() {
         usuariosTotalCount = typeof usuarios?.total === 'number'
             ? usuarios.total
             : usuariosData.length;
-        
-        // Atualizar UI
+
+        filteredMunicipios = [...municipiosData];
+        filteredUsuarios = [...usuariosData];
+
+        const couponsRaw = Array.isArray(cupons?.coupons)
+            ? cupons.coupons
+            : Array.isArray(cupons?.data)
+                ? cupons.data
+                : Array.isArray(cupons)
+                    ? cupons
+                    : [];
+
+        couponsData = couponsRaw
+            .map(normalizeCoupon)
+            .filter(Boolean)
+            .sort((a, b) => {
+                const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+                const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+                return timeB - timeA;
+            });
+        couponsLoadError = couponsError;
+        if (couponsError) {
+            console.error('Erro ao carregar cupons:', couponsError);
+        }
+
         updateDashboardStats(dashboard);
         applyMunicipioFilters();
         populateUserMunicipioSelects();
         syncUsuarioFilterControls();
         applyUsuarioFilters();
+        populateBillingMunicipioSelect();
+        populateCouponMunicipioSelect();
+        renderCouponsList();
+
         receitaData = receita;
         updateRevenueChart(receitaData);
+        renderFaturamentoOverview(receitaData);
         updateConfigSummary();
-        
+        reportsState.needsRefresh = true;
+        if (isReportsSectionVisible()) {
+            loadReportsData({ force: true, silent: true }).catch(() => {});
+        }
         showLoading(false);
     } catch (error) {
         showLoading(false);
@@ -275,18 +361,593 @@ function escapeHtml(value) {
         .replace(/'/g, '&#39;');
 }
 
+function formatSignedCurrency(value) {
+    if (value === null || value === undefined || Number.isNaN(value)) {
+        return formatCurrency(0);
+    }
+    if (value === 0) {
+        return formatCurrency(0);
+    }
+    return value > 0
+        ? `+${formatCurrency(value)}`
+        : formatCurrency(value);
+}
+
+function formatPercent(value, options = {}) {
+    if (value === null || value === undefined || Number.isNaN(value)) {
+        return '0%';
+    }
+
+    const { fractionDigits = 1, sign = true } = options;
+    const absolute = Math.abs(value);
+    const formatted = new Intl.NumberFormat('pt-BR', {
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits
+    }).format(absolute);
+
+    if (!sign) {
+        return `${formatted}%`;
+    }
+
+    if (value > 0) {
+        return `+${formatted}%`;
+    }
+
+    if (value < 0) {
+        return `-${formatted}%`;
+    }
+
+    return `${formatted}%`;
+}
+
+function resolveHistoricoLabel(item, index) {
+    if (!item || typeof item !== 'object') {
+        return `Período ${index + 1}`;
+    }
+
+    const directLabel = item.mes
+        || item.label
+        || item.periodo
+        || item.referencia
+        || item.mes_referencia
+        || item.period;
+    if (directLabel) {
+        return directLabel;
+    }
+
+    const monthIndexRaw = item.mes_numero ?? item.mes_indice ?? item.month_index;
+    const yearRaw = item.ano ?? item.year;
+    const monthIndex = monthIndexRaw !== undefined ? parseInt(monthIndexRaw, 10) : NaN;
+    const year = yearRaw !== undefined ? parseInt(yearRaw, 10) : NaN;
+    if (!Number.isNaN(monthIndex) && !Number.isNaN(year)) {
+        const date = new Date(year, Math.max(0, monthIndex - 1), 1);
+        if (!Number.isNaN(date.getTime())) {
+            return date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+        }
+    }
+
+    const rawDate = item.data
+        ?? item.data_referencia
+        ?? (item.timestamp && typeof item.timestamp === 'object' && 'seconds' in item.timestamp ? new Date(item.timestamp.seconds * 1000) : item.timestamp)
+        ?? item.reference_date;
+    if (rawDate) {
+        const date = rawDate instanceof Date
+            ? rawDate
+            : new Date(typeof rawDate === 'object' && 'seconds' in rawDate ? rawDate.seconds * 1000 : rawDate);
+        if (!Number.isNaN(date.getTime())) {
+            return date.toLocaleDateString('pt-BR', { month: 'short', year: 'numeric' });
+        }
+    }
+
+    return `Período ${index + 1}`;
+}
+
 function getMunicipioName(mun) {
     return mun.nome || mun.municipio_nome || mun.cidade || mun.municipio_id || '';
 }
 
 function getMunicipioPlanoValue(mun) {
-    return normalizeValue(mun.plano || mun.license_type || '');
+    if (!mun || typeof mun !== 'object') {
+        return 'pending';
+    }
+
+    const billing = mun.billing || {};
+    const planRaw = billing.plan_type || mun.plano || mun.license_type || '';
+    const normalizedPlan = normalizeValue(planRaw);
+
+    if (normalizedPlan) {
+        return normalizedPlan;
+    }
+
+    const billingStatus = normalizeValue(mun.billing_status || billing.status || '');
+    if (billingStatus === 'active' && !normalizedPlan) {
+        return 'custom';
+    }
+    if (billingStatus) {
+        return billingStatus;
+    }
+
+    return 'pending';
+}
+
+function normalizeMunicipioRecord(rawMunicipio) {
+    if (!rawMunicipio || typeof rawMunicipio !== 'object') {
+        return null;
+    }
+
+    const normalized = { ...rawMunicipio };
+    const billingRaw = normalized.billing && typeof normalized.billing === 'object'
+        ? { ...normalized.billing }
+        : {};
+
+    const municipioId = normalized.municipio_id || normalized.id;
+    if (municipioId && !normalized.municipio_id) {
+        normalized.municipio_id = municipioId;
+    }
+    if (municipioId && !normalized.id) {
+        normalized.id = municipioId;
+    }
+
+    const planCandidates = [
+        billingRaw.plan_type,
+        normalized.license_type,
+        normalized.plano,
+        normalized.licenseType
+    ];
+    const rawPlan = planCandidates.find(value => normalizeValue(value)) || '';
+    const normalizedPlan = normalizeValue(rawPlan) || '';
+
+    const billingStatusCandidate = normalized.billing_status
+        || billingRaw.status
+        || normalized.status;
+    const normalizedBillingStatus = normalizeValue(billingStatusCandidate) || 'pending';
+
+    const licenseCandidate = normalized.license_expires
+        || normalized.data_vencimento_licenca
+        || billingRaw.contract_end
+        || billingRaw.license_expires;
+
+    const maxUsersCandidate = normalized.max_usuarios
+        ?? normalized.max_users
+        ?? billingRaw.max_users;
+
+    const monthlyValueCandidate = normalizeNullableNumber(billingRaw.monthly_value);
+    const effectiveValueCandidate = normalizeNullableNumber(billingRaw.effective_monthly_value);
+
+    if (normalizedPlan) {
+        billingRaw.plan_type = normalizedPlan;
+        normalized.license_type = normalizedPlan;
+    } else if (!normalized.license_type) {
+        normalized.license_type = 'pending';
+    }
+
+    if (!billingRaw.status || billingRaw.status !== normalizedBillingStatus) {
+        billingRaw.status = normalizedBillingStatus;
+    }
+    normalized.billing_status = normalizedBillingStatus;
+
+    if (!normalized.status) {
+        if (normalizedBillingStatus === 'inactive') {
+            normalized.status = 'inactive';
+        } else if (normalizedBillingStatus === 'pending') {
+            normalized.status = 'pending';
+        } else {
+            normalized.status = 'active';
+        }
+    }
+
+    if (licenseCandidate) {
+        billingRaw.contract_end = licenseCandidate;
+        normalized.license_expires = licenseCandidate;
+        normalized.data_vencimento_licenca = licenseCandidate;
+    }
+
+    if (Number.isFinite(Number(maxUsersCandidate)) && Number(maxUsersCandidate) > 0) {
+        const maxUsersValue = Number(maxUsersCandidate);
+        billingRaw.max_users = maxUsersValue;
+        normalized.max_users = maxUsersValue;
+        normalized.max_usuarios = maxUsersValue;
+    }
+
+    if (monthlyValueCandidate !== null) {
+        billingRaw.monthly_value = monthlyValueCandidate;
+    }
+
+    if (effectiveValueCandidate !== null) {
+        billingRaw.effective_monthly_value = effectiveValueCandidate;
+    }
+
+    if (!billingRaw.updated_at && normalized.updated_at) {
+        billingRaw.updated_at = normalized.updated_at;
+    }
+
+    normalized.billing = billingRaw;
+
+    return normalized;
+}
+
+function synchronizeMunicipioCache(updatedMunicipio) {
+    if (!updatedMunicipio) {
+        return;
+    }
+
+    const normalized = normalizeMunicipioRecord(updatedMunicipio) || updatedMunicipio;
+    const municipioId = normalized.municipio_id || normalized.id;
+    if (!municipioId) {
+        return;
+    }
+
+    municipiosData = municipiosData.map(item => {
+        const itemId = item?.municipio_id || item?.id;
+        if (itemId !== municipioId) {
+            return item;
+        }
+        return { ...item, ...normalized, billing: { ...(item.billing || {}), ...(normalized.billing || {}) } };
+    });
+
+    filteredMunicipios = filteredMunicipios.map(item => {
+        const itemId = item?.municipio_id || item?.id;
+        if (itemId !== municipioId) {
+            return item;
+        }
+        return { ...item, ...normalized, billing: { ...(item.billing || {}), ...(normalized.billing || {}) } };
+    });
 }
 
 function formatPlanoLabel(value) {
     const normalized = normalizeValue(value);
-    if (!normalized) return 'Standard';
+    if (!normalized) {
+        return 'Pendente';
+    }
+
+    const labels = {
+        pending: 'Pendente',
+        pendente: 'Pendente',
+        draft: 'Rascunho',
+        suspended: 'Suspenso',
+        paused: 'Pausado',
+        inactive: 'Inativo',
+        custom: 'Personalizado',
+        active: 'Ativo',
+        standard: 'Standard',
+        professional: 'Profissional',
+        profissional: 'Profissional',
+        premium: 'Premium',
+        basic: 'Básico',
+        basico: 'Básico'
+    };
+
+    if (labels[normalized]) {
+        return labels[normalized];
+    }
+
     return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function normalizeCouponDate(value) {
+    if (!value && value !== 0) {
+        return null;
+    }
+
+    if (value instanceof Date) {
+        return Number.isNaN(value.getTime()) ? null : value.toISOString();
+    }
+
+    if (typeof value === 'object' && value && typeof value.seconds === 'number') {
+        return new Date(value.seconds * 1000).toISOString();
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? null : parsed.toISOString();
+}
+
+function normalizeCouponNumber(value) {
+    if (value === null || value === undefined || value === '') {
+        return null;
+    }
+
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+}
+
+function normalizeCouponInteger(value) {
+    const parsed = normalizeCouponNumber(value);
+    if (!Number.isFinite(parsed)) {
+        return null;
+    }
+    const floored = Math.floor(parsed);
+    return Number.isFinite(floored) ? floored : null;
+}
+
+function normalizeCoupon(coupon) {
+    if (!coupon || typeof coupon !== 'object') {
+        return null;
+    }
+
+    const normalized = { ...coupon };
+
+    normalized.id = coupon.id || coupon.coupon_id || coupon.code || null;
+    normalized.code = (coupon.code || '').toString().trim().toUpperCase();
+    normalized.description = coupon.description || coupon.descricao || '';
+
+    const typeRaw = (coupon.discount_type || coupon.discountType || '').toString().toLowerCase();
+    normalized.discount_type = ['fixed', 'valor', 'value', 'amount'].includes(typeRaw) ? 'fixed' : 'percentage';
+
+    const baseValue = normalizeCouponNumber(coupon.discount_value ?? coupon.value);
+    const percentageValue = normalizeCouponNumber(coupon.percent_off);
+    const amountValue = normalizeCouponNumber(coupon.amount_off);
+
+    if (normalized.discount_type === 'fixed') {
+        normalized.amount_off = amountValue ?? baseValue ?? 0;
+        normalized.discount_value = normalized.amount_off;
+        normalized.percent_off = null;
+    } else {
+        normalized.percent_off = percentageValue ?? baseValue ?? 0;
+        normalized.discount_value = normalized.percent_off;
+        normalized.amount_off = null;
+    }
+
+    normalized.municipio_id = coupon.municipio_id || coupon.municipioId || null;
+    normalized.municipio_nome = coupon.municipio_nome || coupon.municipioNome || null;
+    normalized.scope = coupon.scope || (normalized.municipio_id ? 'municipality' : 'global');
+
+    normalized.valid_from = normalizeCouponDate(coupon.valid_from || coupon.validFrom);
+    normalized.valid_until = normalizeCouponDate(coupon.valid_until || coupon.validUntil);
+    normalized.created_at = normalizeCouponDate(coupon.created_at || coupon.createdAt);
+    normalized.updated_at = normalizeCouponDate(coupon.updated_at || coupon.updatedAt);
+
+    normalized.usage_count = normalizeCouponInteger(coupon.usage_count) || 0;
+    const maxUses = normalizeCouponInteger(coupon.max_uses);
+    normalized.max_uses = Number.isFinite(maxUses) && maxUses > 0 ? maxUses : null;
+
+    const baseStatus = (coupon.status || 'active').toString().toLowerCase();
+    const explicitCurrent = (coupon.current_status || coupon.currentStatus || '').toString().toLowerCase();
+
+    let currentStatus = explicitCurrent || baseStatus;
+    if (!explicitCurrent || explicitCurrent === '') {
+        if (baseStatus === 'inactive') {
+            currentStatus = 'inactive';
+        } else {
+            const now = Date.now();
+            const fromTime = normalized.valid_from ? new Date(normalized.valid_from).getTime() : null;
+            const untilTime = normalized.valid_until ? new Date(normalized.valid_until).getTime() : null;
+            if (fromTime && fromTime > now) {
+                currentStatus = 'scheduled';
+            } else if (untilTime && untilTime < now) {
+                currentStatus = 'expired';
+            } else {
+                currentStatus = 'active';
+            }
+        }
+    }
+
+    normalized.status = baseStatus;
+    normalized.current_status = currentStatus;
+
+    return normalized;
+}
+
+function formatStatusLabel(value) {
+    const normalized = normalizeValue(value);
+    if (!normalized) {
+        return '-';
+    }
+
+    const labels = {
+        ativo: 'Ativo',
+        active: 'Ativo',
+        inativo: 'Inativo',
+        inactive: 'Inativo',
+        pendente: 'Pendente',
+        pending: 'Pendente',
+        paused: 'Pausado',
+        suspenso: 'Suspenso',
+        suspended: 'Suspenso',
+        draft: 'Rascunho'
+    };
+
+    if (labels[normalized]) {
+        return labels[normalized];
+    }
+
+    return normalized.charAt(0).toUpperCase() + normalized.slice(1);
+}
+
+function formatDaysLabel(days) {
+    const value = Number(days);
+    if (!Number.isFinite(value)) {
+        return '-';
+    }
+    if (value === 0) {
+        return 'Hoje';
+    }
+    if (value === 1) {
+        return '1 dia';
+    }
+    if (value === -1) {
+        return '1 dia atrás';
+    }
+    if (value < 0) {
+        return `${Math.abs(value)} dias atrás`;
+    }
+    return `${value} dias`;
+}
+
+function normalizeExpiringLicense(item) {
+    if (!item || typeof item !== 'object') {
+        return null;
+    }
+
+    const municipioId = item.municipio_id || item.id || '';
+    const municipioNome = item.municipio_nome
+        || item.nome
+        || item.cidade
+        || municipioId;
+    const licenseType = normalizeValue(item.license_type || item.plan_type || item.plano || '') || '';
+    const expiresRaw = item.expires_at
+        || item.license_expires
+        || item.expiresAt
+        || item.licenseExpires;
+    const expiresAt = normalizeCouponDate(expiresRaw);
+    const daysRaw = Number(item.days_until_expiry ?? item.daysUntilExpiry ?? item.days_remaining ?? null);
+    const daysUntilExpiry = Number.isFinite(daysRaw) ? daysRaw : null;
+
+    return {
+        municipio_id: municipioId,
+        municipio_nome: municipioNome,
+        license_type: licenseType,
+        expires_at: expiresAt,
+        days_until_expiry: daysUntilExpiry,
+        raw: { ...item }
+    };
+}
+
+function normalizeMunicipalityReportStat(stat) {
+    if (!stat || typeof stat !== 'object') {
+        return null;
+    }
+
+    const municipioId = stat.municipio_id || stat.id || '';
+    const municipioNome = stat.municipio_nome
+        || stat.nome
+        || stat.cidade
+        || municipioId;
+    const licenseType = normalizeValue(stat.license_type || stat.plan_type || stat.plano || '') || '';
+    const status = normalizeValue(stat.status || stat.municipio_status || stat.billing_status || '') || '';
+
+    const currentUsers = Number(stat.users?.current ?? stat.current_users ?? stat.usuarios ?? 0);
+    const maxUsersRaw = stat.users?.max
+        ?? stat.max_users
+        ?? stat.max_usuarios
+        ?? stat.capacidade_usuarios
+        ?? null;
+    const maxUsersNumber = Number(maxUsersRaw);
+    const hasUsersLimit = Number.isFinite(maxUsersNumber) && maxUsersNumber > 0;
+    const userUsageRaw = Number(stat.users?.usage_percent ?? stat.users?.ocupacao_percentual ?? null);
+    const usagePercentUsers = Number.isFinite(userUsageRaw)
+        ? Math.max(0, Math.min(100, userUsageRaw))
+        : (hasUsersLimit ? Math.max(0, Math.min(100, Math.round((currentUsers / maxUsersNumber) * 100))) : null);
+
+    const currentContracts = Number(stat.contracts?.current ?? stat.current_contracts ?? stat.contratos ?? 0);
+    const maxContractsRaw = stat.contracts?.max
+        ?? stat.max_contracts
+        ?? stat.max_contratos
+        ?? null;
+    const maxContractsNumber = Number(maxContractsRaw);
+    const hasContractsLimit = Number.isFinite(maxContractsNumber) && maxContractsNumber > 0;
+    const contractsUsageRaw = Number(stat.contracts?.usage_percent ?? null);
+    const usagePercentContracts = Number.isFinite(contractsUsageRaw)
+        ? Math.max(0, Math.min(100, contractsUsageRaw))
+        : (hasContractsLimit ? Math.max(0, Math.min(100, Math.round((currentContracts / maxContractsNumber) * 100))) : null);
+
+    const licenseExpiresRaw = stat.license_expires
+        || stat.data_vencimento_licenca
+        || stat.contract_end
+        || stat.expires_at
+        || null;
+    const licenseExpires = normalizeCouponDate(licenseExpiresRaw);
+
+    return {
+        municipio_id: municipioId,
+        municipio_nome: municipioNome,
+        license_type: licenseType,
+        status,
+        license_expires: licenseExpires,
+        users: {
+            current: Number.isFinite(currentUsers) && currentUsers >= 0 ? currentUsers : 0,
+            max: hasUsersLimit ? maxUsersNumber : null,
+            usage_percent: usagePercentUsers
+        },
+        contracts: {
+            current: Number.isFinite(currentContracts) && currentContracts >= 0 ? currentContracts : 0,
+            max: hasContractsLimit ? maxContractsNumber : null,
+            usage_percent: usagePercentContracts
+        },
+        raw: { ...stat }
+    };
+}
+
+function resolveCouponTargetName(coupon) {
+    if (!coupon) {
+        return 'Todos os municípios';
+    }
+
+    const municipioId = coupon.municipio_id || coupon.municipioId || null;
+    if (!municipioId) {
+        return 'Todos os municípios';
+    }
+
+    const municipio = municipiosData.find(item => (item.municipio_id || item.id) === municipioId);
+    if (municipio) {
+        return getMunicipioName(municipio);
+    }
+
+    return coupon.municipio_nome || municipioId;
+}
+
+function formatCouponDiscount(coupon) {
+    if (!coupon) {
+        return formatCurrency(0);
+    }
+
+    if ((coupon.discount_type || '').toLowerCase() === 'fixed') {
+        const value = normalizeCouponNumber(coupon.amount_off ?? coupon.discount_value) || 0;
+        return formatCurrency(value);
+    }
+
+    const value = normalizeCouponNumber(coupon.percent_off ?? coupon.discount_value) || 0;
+    return `${new Intl.NumberFormat('pt-BR', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 2
+    }).format(value)}%`;
+}
+
+function resolveCouponValidity(coupon) {
+    const start = normalizeCouponDate(coupon?.valid_from);
+    const end = normalizeCouponDate(coupon?.valid_until);
+
+    if (start && end) {
+        return `De ${formatDate(start)} até ${formatDate(end)}`;
+    }
+    if (end) {
+        return `Até ${formatDate(end)}`;
+    }
+    if (start) {
+        return `A partir de ${formatDate(start)}`;
+    }
+    return 'Aplicação imediata';
+}
+
+function populateCouponMunicipioSelect() {
+    const select = document.getElementById('coupon-municipio-id');
+    if (!select) {
+        return;
+    }
+
+    const currentValue = select.value;
+    const options = ['<option value="">Todos os municípios</option>'];
+    const sortedMunicipios = [...municipiosData].sort((a, b) => {
+        const nameA = getMunicipioName(a).toLowerCase();
+        const nameB = getMunicipioName(b).toLowerCase();
+        return nameA.localeCompare(nameB);
+    });
+
+    sortedMunicipios.forEach(municipio => {
+        const id = municipio.municipio_id || municipio.id;
+        if (!id) {
+            return;
+        }
+        const name = getMunicipioName(municipio) || id;
+        options.push(`<option value="${escapeHtml(id)}">${escapeHtml(name)}</option>`);
+    });
+
+    select.innerHTML = options.join('');
+
+    if (currentValue && Array.from(select.options).some(option => option.value === currentValue)) {
+        select.value = currentValue;
+    } else {
+        select.value = '';
+    }
 }
 
 function getMunicipioStatusValue(mun) {
@@ -427,14 +1088,36 @@ function updateMunicipiosTable(municipios, total = null) {
         const nomeMunicipio = mun.nome || mun.municipio_nome || mun.cidade || 'Sem nome';
         const cidade = mun.cidade || mun.municipio_nome || '';
         const estado = mun.estado ? `- ${mun.estado}` : '';
-        const planoLabel = formatPlanoLabel(mun.plano || mun.license_type || 'standard');
+        const planoValue = getMunicipioPlanoValue(mun);
+        const planoLabel = formatPlanoLabel(planoValue);
+        const planoBadgeStyles = {
+            pending: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+            pendente: 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+            suspended: 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300',
+            paused: 'bg-rose-100 dark:bg-rose-900/30 text-rose-700 dark:text-rose-300',
+            inactive: 'bg-gray-200 dark:bg-gray-800 text-text-secondary dark:text-gray-300',
+            custom: 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300',
+            premium: 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300',
+            profissional: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300',
+            professional: 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300',
+            standard: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300',
+            basico: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300',
+            basic: 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300'
+        };
+        const planoBadgeClass = planoBadgeStyles[planoValue] || 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400';
         const maxUsuarios = mun.max_usuarios ?? mun.max_users ?? 0;
         const usuariosAtuais = mun.usuarios_atuais ?? mun.current_users ?? 0;
         const usagePercent = maxUsuarios > 0 ? Math.round((usuariosAtuais / maxUsuarios) * 100) : 0;
         const licencaVencimento = mun.data_vencimento_licenca || mun.license_expires;
         const diasRestantes = getDaysUntil(licencaVencimento);
         const statusRaw = (mun.status || 'ativo').toString().toLowerCase();
-        const statusColor = diasRestantes > 30 ? 'green' : diasRestantes > 0 ? 'amber' : 'red';
+        const statusColor = diasRestantes === null
+            ? 'gray'
+            : diasRestantes > 30
+                ? 'green'
+                : diasRestantes > 0
+                    ? 'amber'
+                    : 'red';
         const statusText = statusRaw === 'inactive' || statusRaw === 'inativo' ? 'Inativo' : 'Ativo';
         
         return `
@@ -451,7 +1134,7 @@ function updateMunicipiosTable(municipios, total = null) {
                     </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
-                    <span class="px-3 py-1 text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full">${planoLabel}</span>
+                    <span class="px-3 py-1 text-xs font-medium rounded-full ${planoBadgeClass}">${planoLabel}</span>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <div class="flex items-center gap-2">
@@ -463,7 +1146,7 @@ function updateMunicipiosTable(municipios, total = null) {
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <p class="text-sm">${formatDate(licencaVencimento)}</p>
-                    <p class="text-xs text-${statusColor}-600 dark:text-${statusColor}-400">${diasRestantes !== null ? diasRestantes + ' dias' : '-'}</p>
+                    <p class="text-xs text-${statusColor}-600 dark:text-${statusColor}-400">${diasRestantes !== null ? diasRestantes + ' dias' : 'Não configurado'}</p>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
                     <span class="px-2 py-1 text-xs font-medium bg-${statusColor}-100 dark:bg-${statusColor}-900/30 text-${statusColor}-600 dark:text-${statusColor}-400 rounded-full flex items-center gap-1 w-fit">
@@ -704,6 +1387,9 @@ function updateUsuariosTable(usuarios, total = null) {
         const statusClasses = getUserStatusBadgeClasses(status);
         const statusLabel = formatUserStatusLabel(status);
         const isSelf = currentUser && (currentUser.id === usuarioId || currentUser.email === email);
+        const photoUrl = usuario.photo_url || '';
+        const safePhotoUrl = photoUrl ? escapeHtml(photoUrl) : '';
+        const safeName = escapeHtml(nome);
         const auditLines = [];
         if (createdAt) auditLines.push(`Criado em ${createdAt}`);
         if (lastLogin) auditLines.push(`Último acesso ${lastLogin}`);
@@ -724,10 +1410,17 @@ function updateUsuariosTable(usuarios, total = null) {
         return `
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-800/50">
                 <td class="px-6 py-4 whitespace-nowrap">
-                    <div class="flex flex-col">
-                        <span class="font-medium">${nome}</span>
-                        <span class="text-sm text-text-secondary dark:text-gray-400">${email}</span>
-                        ${auditText ? `<span class="text-xs text-text-secondary/80 dark:text-gray-500 mt-1">${auditText}</span>` : ''}
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-primary/10 dark:bg-blue-900/30 flex items-center justify-center overflow-hidden border border-primary/20 dark:border-blue-500/30">
+                            ${photoUrl
+                                ? `<img src="${safePhotoUrl}" alt="${safeName}" class="w-full h-full object-cover" />`
+                                : '<span class="material-symbols-outlined text-2xl text-primary dark:text-blue-300">account_circle</span>'}
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="font-medium">${nome}</span>
+                            <span class="text-sm text-text-secondary dark:text-gray-400">${email}</span>
+                            ${auditText ? `<span class="text-xs text-text-secondary/80 dark:text-gray-500 mt-1">${auditText}</span>` : ''}
+                        </div>
                     </div>
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap">
@@ -975,9 +1668,1717 @@ function updateRevenueChart(receita) {
     }).join('');
 }
 
+function renderFaturamentoOverview(receita) {
+    const monthlyEl = document.getElementById('faturamento-mensal-total');
+    const monthlyVariationEl = document.getElementById('faturamento-mensal-variacao');
+    const annualEl = document.getElementById('faturamento-anual-projetada');
+    const ticketEl = document.getElementById('faturamento-ticket-medio');
+    const municipiosEl = document.getElementById('faturamento-municipios-ativos');
+    const historyEl = document.getElementById('faturamento-historico-list');
+    const planosEl = document.getElementById('faturamento-planos-list');
+    const projectionsEl = document.getElementById('faturamento-projecoes');
+    const alertsEl = document.getElementById('faturamento-alertas');
+
+    if (!monthlyEl && !annualEl && !ticketEl && !municipiosEl && !historyEl && !planosEl && !projectionsEl && !alertsEl) {
+        return;
+    }
+
+    if (!receita) {
+        if (monthlyEl) monthlyEl.textContent = formatCurrency(0);
+        if (monthlyVariationEl) {
+            monthlyVariationEl.textContent = 'Dados financeiros indisponíveis';
+            monthlyVariationEl.classList.remove('text-green-600', 'dark:text-green-400', 'text-amber-600', 'dark:text-amber-400');
+            monthlyVariationEl.classList.add('text-text-secondary', 'dark:text-gray-400');
+        }
+        if (annualEl) annualEl.textContent = formatCurrency(0);
+        if (ticketEl) ticketEl.textContent = formatCurrency(0);
+        if (municipiosEl) municipiosEl.textContent = '0 municípios ativos';
+        if (historyEl) historyEl.innerHTML = '<p class="text-sm text-text-secondary dark:text-gray-400">Nenhum dado financeiro disponível.</p>';
+        if (planosEl) planosEl.innerHTML = '<p class="text-sm text-text-secondary dark:text-gray-400">Nenhuma informação de planos registrada.</p>';
+        if (projectionsEl) projectionsEl.innerHTML = '<p class="text-sm text-text-secondary dark:text-gray-400">Projeções disponíveis após registrar pelo menos dois meses de receita.</p>';
+        if (alertsEl) alertsEl.innerHTML = '<div class="rounded-lg border border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark p-4 text-sm text-text-secondary dark:text-gray-400">Os alertas financeiros serão exibidos assim que houver dados suficientes.</div>';
+        return;
+    }
+
+    const historicoRaw = Array.isArray(receita.historico) ? receita.historico.filter(item => item && typeof item === 'object') : [];
+    const historico = historicoRaw.map(item => ({ ...item }));
+    const lastEntry = historico.length > 0 ? historico[historico.length - 1] : null;
+    const previousEntry = historico.length > 1 ? historico[historico.length - 2] : null;
+
+    const receitaAtual = lastEntry?.receita_mensal
+        ?? receita?.receita_mensal_total
+        ?? receita?.receita_mensal
+        ?? 0;
+    const receitaAnterior = previousEntry?.receita_mensal ?? null;
+
+    const ticketAtual = lastEntry?.ticket_medio
+        ?? lastEntry?.ticket_medio_municipio
+        ?? receita?.ticket_medio_municipio
+        ?? receita?.ticket_medio
+        ?? 0;
+    const ticketAnterior = previousEntry?.ticket_medio
+        ?? previousEntry?.ticket_medio_municipio
+        ?? null;
+
+    const municipiosAtivos = receita?.municipios_ativos
+        ?? lastEntry?.municipios_ativos
+        ?? lastEntry?.ativos
+        ?? 0;
+
+    if (monthlyEl) monthlyEl.textContent = formatCurrency(receitaAtual);
+    if (annualEl) {
+        const anual = receita?.receita_anual_projetada ?? receitaAtual * 12;
+        annualEl.textContent = formatCurrency(anual);
+    }
+    if (ticketEl) ticketEl.textContent = formatCurrency(ticketAtual);
+    if (municipiosEl) {
+        const label = municipiosAtivos === 1 ? 'município ativo' : 'municípios ativos';
+        municipiosEl.textContent = `${municipiosAtivos || 0} ${label}`;
+    }
+
+    if (monthlyVariationEl) {
+        monthlyVariationEl.classList.remove('text-green-600', 'dark:text-green-400', 'text-amber-600', 'dark:text-amber-400');
+        monthlyVariationEl.classList.add('text-text-secondary', 'dark:text-gray-400');
+
+        if (receitaAnterior === null || receitaAnterior === undefined) {
+            monthlyVariationEl.textContent = 'Sem histórico anterior';
+        } else if (receitaAnterior === 0 && receitaAtual === 0) {
+            monthlyVariationEl.textContent = 'Sem variação em relação ao mês anterior';
+        } else if (receitaAnterior === 0) {
+            monthlyVariationEl.textContent = 'Primeiro mês registrado';
+        } else {
+            const diferenca = receitaAtual - receitaAnterior;
+            const variacaoPercent = (diferenca / receitaAnterior) * 100;
+            monthlyVariationEl.textContent = `${formatSignedCurrency(diferenca)} (${formatPercent(variacaoPercent)}) vs mês anterior`;
+            monthlyVariationEl.classList.remove('text-text-secondary', 'dark:text-gray-400');
+            if (diferenca > 0) {
+                monthlyVariationEl.classList.add('text-green-600', 'dark:text-green-400');
+            } else if (diferenca < 0) {
+                monthlyVariationEl.classList.add('text-amber-600', 'dark:text-amber-400');
+            } else {
+                monthlyVariationEl.classList.add('text-text-secondary', 'dark:text-gray-400');
+            }
+        }
+    }
+
+    if (historyEl) {
+        if (!historico.length) {
+            historyEl.innerHTML = '<p class="text-sm text-text-secondary dark:text-gray-400">Nenhum histórico de faturamento foi registrado ainda.</p>';
+        } else {
+            const historyItems = historico.map((item, index) => {
+                const label = escapeHtml(resolveHistoricoLabel(item, index));
+                const receitaMensal = item.receita_mensal ?? 0;
+                const anterior = index > 0 ? (historico[index - 1].receita_mensal ?? 0) : null;
+                const diferenca = anterior !== null ? receitaMensal - anterior : null;
+                const percentual = anterior && anterior !== 0 ? (diferenca / anterior) * 100 : null;
+                const novos = item.novos_municipios
+                    ?? item.novos
+                    ?? item.new_municipalities
+                    ?? item.municipios_novos
+                    ?? 0;
+                const cancelamentos = item.cancelamentos
+                    ?? item.churn
+                    ?? item.municipios_cancelados
+                    ?? item.cancelled_municipalities
+                    ?? 0;
+
+                const badges = [];
+                if (diferenca !== null) {
+                    if (anterior === 0 && receitaMensal > 0) {
+                        badges.push('<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Nova receita</span>');
+                    } else if (anterior === 0 && receitaMensal === 0) {
+                        badges.push('<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-text-secondary dark:bg-gray-800 dark:text-gray-300">Sem variação</span>');
+                    } else if (anterior) {
+                        const trendClass = diferenca > 0
+                            ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                            : diferenca < 0
+                                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+                                : 'bg-gray-100 text-text-secondary dark:bg-gray-800 dark:text-gray-300';
+                        const trendIcon = diferenca > 0 ? '▲' : diferenca < 0 ? '▼' : '▬';
+                        const labelText = percentual !== null ? formatPercent(percentual) : 'Sem variação';
+                        badges.push(`<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium ${trendClass}">${trendIcon} ${labelText}</span>`);
+                    }
+                }
+
+                if (novos > 0) {
+                    badges.push(`<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">+${novos} novos</span>`);
+                }
+
+                if (cancelamentos > 0) {
+                    badges.push(`<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300">-${cancelamentos} cancel.</span>`);
+                }
+
+                return `
+                    <div class="flex flex-col gap-3 rounded-xl border border-border-light dark:border-border-dark bg-white dark:bg-slate-900/40 p-4 md:flex-row md:items-center md:justify-between">
+                        <div>
+                            <p class="text-sm text-text-secondary dark:text-gray-400">${label}</p>
+                            <p class="text-lg font-semibold text-text-primary dark:text-gray-100">${formatCurrency(receitaMensal)}</p>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            ${badges.join('') || ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            historyEl.innerHTML = historyItems;
+        }
+    }
+
+    const planos = receita?.planos && typeof receita.planos === 'object' ? receita.planos : {};
+    const planoEntries = Object.entries(planos).filter(([, value]) => value && typeof value === 'object');
+    const totalReceitaPlanos = planoEntries.reduce((sum, [, plan]) => sum + (plan.receita_mensal || 0), 0);
+    const totalMunicipiosPlanos = planoEntries.reduce((sum, [, plan]) => sum + (plan.ativos ?? plan.quantidade ?? 0), 0);
+
+    if (planosEl) {
+        if (!planoEntries.length) {
+            planosEl.innerHTML = '<p class="text-sm text-text-secondary dark:text-gray-400">Nenhuma informação de planos registrada.</p>';
+        } else {
+            const visualConfig = {
+                premium: { bullet: 'bg-blue-500', text: 'text-blue-600 dark:text-blue-300' },
+                profissional: { bullet: 'bg-purple-500', text: 'text-purple-600 dark:text-purple-300' },
+                professional: { bullet: 'bg-purple-500', text: 'text-purple-600 dark:text-purple-300' },
+                standard: { bullet: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-300' },
+                basico: { bullet: 'bg-emerald-500', text: 'text-emerald-600 dark:text-emerald-300' }
+            };
+
+            const planoHtml = planoEntries.map(([key, plan]) => {
+                const label = formatPlanoLabel(key);
+                const receitaPlano = plan.receita_mensal ?? 0;
+                const ativosPlano = plan.ativos ?? plan.quantidade ?? 0;
+                const shareBase = totalReceitaPlanos > 0
+                    ? receitaPlano / totalReceitaPlanos
+                    : totalMunicipiosPlanos > 0
+                        ? ativosPlano / totalMunicipiosPlanos
+                        : 0;
+                const sharePercent = shareBase * 100;
+                const visuals = visualConfig[key] || { bullet: 'bg-slate-400', text: 'text-text-secondary dark:text-gray-300' };
+                const ativosLabel = ativosPlano === 1 ? 'município ativo' : 'municípios ativos';
+
+                return `
+                    <div class="flex items-start justify-between gap-4 rounded-xl border border-border-light dark:border-border-dark bg-gray-50/50 dark:bg-gray-800/40 p-4">
+                        <div class="flex items-start gap-3">
+                            <span class="mt-1 inline-flex h-3 w-3 rounded-full ${visuals.bullet}"></span>
+                            <div>
+                                <p class="font-medium text-text-primary dark:text-gray-100">${escapeHtml(label)}</p>
+                                <p class="text-sm text-text-secondary dark:text-gray-400">Receita: ${formatCurrency(receitaPlano)}</p>
+                                <p class="text-xs text-text-secondary dark:text-gray-500 mt-1">${ativosPlano || 0} ${ativosLabel}</p>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-lg font-semibold ${visuals.text}">${formatPercent(sharePercent, { fractionDigits: 1, sign: false })}</p>
+                            <p class="text-xs text-text-secondary dark:text-gray-400">da base atual</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            planosEl.innerHTML = planoHtml;
+        }
+    }
+
+    if (projectionsEl) {
+        const growthRates = [];
+        historico.forEach((item, index) => {
+            if (index === 0) return;
+            const atual = item.receita_mensal ?? 0;
+            const anterior = historico[index - 1].receita_mensal ?? 0;
+            if (anterior > 0) {
+                growthRates.push((atual - anterior) / anterior);
+            }
+        });
+
+        const recentes = growthRates.slice(-3);
+        const averageGrowth = recentes.length > 0
+            ? recentes.reduce((sum, value) => sum + value, 0) / recentes.length
+            : null;
+
+        if (averageGrowth === null || !Number.isFinite(averageGrowth) || historico.length < 2 || receitaAtual <= 0) {
+            projectionsEl.innerHTML = '<p class="text-sm text-text-secondary dark:text-gray-400">Projeções disponíveis após registrar pelo menos dois meses de receita.</p>';
+        } else {
+            const labels = ['Próximo mês', 'Em 2 meses', 'Em 3 meses'];
+            const projectionCards = labels.map((label, index) => {
+                const fator = Math.pow(1 + averageGrowth, index + 1);
+                const valorProjetado = Math.max(0, receitaAtual * fator);
+                const diferenca = valorProjetado - receitaAtual;
+                const trendClass = diferenca > 0
+                    ? 'text-green-600 dark:text-green-400'
+                    : diferenca < 0
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-text-secondary dark:text-gray-400';
+
+                return `
+                    <div class="flex items-center justify-between rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-slate-900/40 px-4 py-3">
+                        <div>
+                            <p class="text-sm text-text-secondary dark:text-gray-400">${label}</p>
+                            <p class="text-base font-semibold text-text-primary dark:text-gray-100">${formatCurrency(valorProjetado)}</p>
+                        </div>
+                        <span class="text-sm font-medium ${trendClass}">${formatSignedCurrency(diferenca)}</span>
+                    </div>
+                `;
+            }).join('');
+
+            const mediaClass = averageGrowth >= 0
+                ? 'text-green-600 dark:text-green-400'
+                : 'text-amber-600 dark:text-amber-400';
+
+            projectionsEl.innerHTML = `
+                <p class="text-xs text-text-secondary dark:text-gray-400">Variação média recente: <span class="font-semibold ${mediaClass}">${formatPercent(averageGrowth * 100)}</span></p>
+                <div class="mt-3 space-y-3">${projectionCards}</div>
+            `;
+        }
+    }
+
+    if (alertsEl) {
+        const alerts = [];
+
+        if (receitaAnterior !== null && receitaAnterior !== undefined && receitaAnterior !== 0) {
+            const diferenca = receitaAtual - receitaAnterior;
+            const variacaoPercentual = (diferenca / receitaAnterior) * 100;
+            if (diferenca > 0) {
+                alerts.push({
+                    type: 'positive',
+                    text: `Receita cresceu ${formatPercent(variacaoPercentual)} em relação ao mês anterior.`
+                });
+            } else if (diferenca < 0) {
+                alerts.push({
+                    type: 'warning',
+                    text: `Receita caiu ${formatPercent(variacaoPercentual)} em relação ao mês anterior. Analise municípios com risco de churn.`
+                });
+            } else {
+                alerts.push({
+                    type: 'neutral',
+                    text: 'Receita estável em relação ao mês anterior.'
+                });
+            }
+        }
+
+        if (ticketAnterior !== null && ticketAnterior !== undefined && ticketAnterior !== 0) {
+            const variacaoTicket = ticketAtual - ticketAnterior;
+            if (variacaoTicket !== 0) {
+                alerts.push({
+                    type: variacaoTicket > 0 ? 'positive' : 'warning',
+                    text: `Ticket médio ${variacaoTicket > 0 ? 'subiu' : 'caiu'} ${formatSignedCurrency(variacaoTicket)} frente ao mês anterior.`
+                });
+            }
+        }
+
+        if (planoEntries.length) {
+            const planShares = planoEntries.map(([key, plan]) => {
+                const receitaPlano = plan.receita_mensal ?? 0;
+                const ativosPlano = plan.ativos ?? plan.quantidade ?? 0;
+                const shareBase = totalReceitaPlanos > 0
+                    ? receitaPlano / totalReceitaPlanos
+                    : totalMunicipiosPlanos > 0
+                        ? ativosPlano / totalMunicipiosPlanos
+                        : 0;
+                return {
+                    key,
+                    label: formatPlanoLabel(key),
+                    share: shareBase
+                };
+            }).sort((a, b) => b.share - a.share);
+
+            if (planShares.length) {
+                const lider = planShares[0];
+                if (lider.share >= 0.6) {
+                    alerts.push({
+                        type: 'warning',
+                        text: `${lider.label} representa ${formatPercent(lider.share * 100, { sign: false })} da receita recorrente. Avalie estratégias de diversificação.`
+                    });
+                } else if (lider.share >= 0.4) {
+                    alerts.push({
+                        type: 'positive',
+                        text: `${lider.label} segue como principal fonte de receita (${formatPercent(lider.share * 100, { sign: false })}).`
+                    });
+                }
+            }
+        }
+
+        if (!alerts.length) {
+            alertsEl.innerHTML = '<div class="rounded-lg border border-border-light dark:border-border-dark bg-white dark:bg-slate-900/40 p-4 text-sm text-text-secondary dark:text-gray-400">Nenhum alerta financeiro no momento.</div>';
+        } else {
+            const classMap = {
+                positive: 'bg-green-50 border border-green-200 text-green-700 dark:bg-green-900/20 dark:border-green-700/40 dark:text-green-300',
+                warning: 'bg-amber-50 border border-amber-200 text-amber-700 dark:bg-amber-900/20 dark:border-amber-700/40 dark:text-amber-300',
+                neutral: 'bg-gray-50 border border-border-light text-text-secondary dark:bg-gray-800/40 dark:border-border-dark dark:text-gray-300'
+            };
+
+            alertsEl.innerHTML = alerts.map(alert => {
+                const classes = classMap[alert.type] || classMap.neutral;
+                return `<div class="rounded-lg p-4 text-sm font-medium ${classes}">${escapeHtml(alert.text)}</div>`;
+            }).join('');
+        }
+    }
+}
+
+// ============================================
+// GESTÃO DE FATURAMENTO
+// ============================================
+
+function setBillingFormDisabled(disabled) {
+    const form = document.getElementById('billing-config-form');
+    if (!form) return;
+    const elements = form.querySelectorAll('input, select, textarea, button[type="submit"]');
+    elements.forEach(element => {
+        if (element.id === 'billing-municipio-select' || element.id === 'billing-refresh') {
+            return;
+        }
+        element.disabled = disabled;
+    });
+}
+
+function resetBillingSummary() {
+    const summaryPlan = document.getElementById('billing-summary-plan');
+    const summaryStatus = document.getElementById('billing-summary-status');
+    const summaryLicense = document.getElementById('billing-summary-license');
+    const summaryEffective = document.getElementById('billing-summary-effective');
+    const summaryCoupon = document.getElementById('billing-summary-coupon');
+    const summaryUpdated = document.getElementById('billing-summary-updated');
+
+    if (summaryPlan) summaryPlan.textContent = 'Plano: não definido';
+    if (summaryStatus) summaryStatus.textContent = 'Status do faturamento: pendente';
+    if (summaryLicense) summaryLicense.textContent = 'Licença válida até: não configurada';
+    if (summaryEffective) summaryEffective.textContent = 'Valor efetivo registrado: R$ 0,00';
+    if (summaryCoupon) summaryCoupon.textContent = 'Cupom aplicado: nenhum';
+    if (summaryUpdated) summaryUpdated.textContent = 'Última atualização: -';
+}
+
+function populateBillingMunicipioSelect() {
+    const select = document.getElementById('billing-municipio-select');
+    if (!select) return;
+
+    const previousValue = billingMunicipioSelected || select.value;
+    const options = ['<option value="">Selecione o município</option>'];
+
+    const sortedMunicipios = [...municipiosData].sort((a, b) => {
+        const nameA = getMunicipioName(a).toLowerCase();
+        const nameB = getMunicipioName(b).toLowerCase();
+        return nameA.localeCompare(nameB);
+    });
+
+    sortedMunicipios.forEach(municipio => {
+        const id = municipio.municipio_id || municipio.id;
+        if (!id) return;
+        const label = getMunicipioName(municipio) || id;
+        options.push(`<option value="${escapeHtml(id)}">${escapeHtml(label)}</option>`);
+    });
+
+    select.innerHTML = options.join('');
+    select.disabled = sortedMunicipios.length === 0;
+
+    const hasPrevious = previousValue && options.some(option => option.includes(`value="${previousValue}"`));
+
+    if (hasPrevious) {
+        select.value = previousValue;
+        billingMunicipioSelected = previousValue;
+        if (billingMunicipioData && (billingMunicipioData.municipio_id || billingMunicipioData.id) === previousValue) {
+            fillBillingForm(billingMunicipioData);
+        } else {
+            loadBillingForMunicipio(previousValue, { skipLoader: true });
+        }
+    } else {
+        select.value = '';
+        billingMunicipioSelected = '';
+        billingMunicipioData = null;
+        resetBillingSummary();
+        setBillingFormDisabled(true);
+    }
+
+}
+
+function fillBillingForm(municipio) {
+    const planSelect = document.getElementById('billing-plan-type');
+    const statusSelect = document.getElementById('billing-status');
+    const maxUsersInput = document.getElementById('billing-max-users');
+    const licenseInput = document.getElementById('billing-license-expires');
+    const monthlyInput = document.getElementById('billing-monthly-value');
+    const paymentDayInput = document.getElementById('billing-payment-day');
+    const installmentsInput = document.getElementById('billing-installments');
+    const notesInput = document.getElementById('billing-notes');
+
+    if (!municipio || !planSelect || !statusSelect) {
+        resetBillingSummary();
+        return;
+    }
+
+    const billing = municipio.billing || {};
+    let planValue = normalizeValue(billing.plan_type || municipio.license_type || '');
+    const planMap = {
+        professional: 'profissional'
+    };
+    if (planMap[planValue]) {
+        planValue = planMap[planValue];
+    }
+    planSelect.value = planValue || '';
+
+    const billingStatus = normalizeValue(billing.status || municipio.billing_status || municipio.status || 'pending');
+    if (statusSelect.querySelector(`option[value="${billingStatus}"]`)) {
+        statusSelect.value = billingStatus;
+    } else {
+        statusSelect.value = 'pending';
+    }
+
+    if (maxUsersInput) {
+        const maxUsers = municipio.max_usuarios ?? municipio.max_users ?? billing.max_users ?? '';
+        maxUsersInput.value = Number.isFinite(Number(maxUsers)) && Number(maxUsers) > 0 ? Number(maxUsers) : '';
+    }
+
+    if (licenseInput) {
+        const licenseValue = billing.contract_end || municipio.license_expires || municipio.data_vencimento_licenca || '';
+        licenseInput.value = formatInputDate(licenseValue);
+    }
+
+    if (monthlyInput) {
+        const monthlyValue = Number(billing.monthly_value ?? municipio.custom_monthly_value ?? '');
+        monthlyInput.value = Number.isFinite(monthlyValue) && monthlyValue > 0 ? monthlyValue : '';
+    }
+
+    if (paymentDayInput) {
+        const paymentDay = billing.payment_day ?? '';
+        paymentDayInput.value = Number.isFinite(Number(paymentDay)) && Number(paymentDay) > 0 ? Number(paymentDay) : '';
+    }
+
+    if (installmentsInput) {
+        const installments = billing.installments ?? '';
+        installmentsInput.value = Number.isFinite(Number(installments)) && Number(installments) > 0 ? Number(installments) : '';
+    }
+
+    if (notesInput) {
+        notesInput.value = billing.notes || '';
+    }
+
+    const summaryPlan = document.getElementById('billing-summary-plan');
+    if (summaryPlan) {
+        summaryPlan.textContent = `Plano: ${formatPlanoLabel(planValue)}`;
+    }
+
+    const summaryStatus = document.getElementById('billing-summary-status');
+    if (summaryStatus) {
+        summaryStatus.textContent = `Status do faturamento: ${formatPlanoLabel(billingStatus)}`;
+    }
+
+    const licenseDate = billing.contract_end || municipio.license_expires || municipio.data_vencimento_licenca;
+    const summaryLicense = document.getElementById('billing-summary-license');
+    if (summaryLicense) {
+        const licenseLabel = licenseDate ? formatDate(licenseDate) : 'não configurada';
+        summaryLicense.textContent = `Licença válida até: ${licenseLabel}`;
+    }
+
+    const effectiveValue = billing.effective_monthly_value ?? billing.monthly_value ?? municipio.custom_monthly_value ?? 0;
+    const summaryEffective = document.getElementById('billing-summary-effective');
+    if (summaryEffective) {
+        summaryEffective.textContent = `Valor efetivo registrado: ${formatCurrency(effectiveValue || 0)}`;
+    }
+
+    const summaryCoupon = document.getElementById('billing-summary-coupon');
+    if (summaryCoupon) {
+        const couponCode = billing.coupon_code || billing.couponCode || '';
+        if (couponCode) {
+            const discountTypeRaw = normalizeValue(
+                billing.coupon_discount_type
+                || billing.couponDiscountType
+                || billing.coupon?.discount_type
+            );
+            const discountValueRaw = billing.coupon_discount_value
+                ?? billing.couponDiscountValue
+                ?? billing.coupon?.discount_value
+                ?? billing.coupon_percent
+                ?? billing.couponPercent
+                ?? billing.coupon?.percent_off
+                ?? billing.coupon_amount
+                ?? billing.coupon?.amount_off;
+
+            let discountLabel = '';
+            if (discountTypeRaw === 'percentage' || discountTypeRaw === 'percentual' || discountTypeRaw === 'percent') {
+                const percentValue = normalizeNullableNumber(discountValueRaw);
+                if (percentValue !== null) {
+                    discountLabel = `${percentValue}%`;
+                }
+            } else if (discountTypeRaw === 'fixed' || discountTypeRaw === 'valor' || discountTypeRaw === 'amount' || discountTypeRaw === 'value') {
+                const amountValue = normalizeNullableNumber(discountValueRaw);
+                if (amountValue !== null) {
+                    discountLabel = formatCurrency(amountValue);
+                }
+            }
+
+            const couponValidUntil = billing.coupon_valid_until
+                || billing.couponValidUntil
+                || billing.coupon?.valid_until
+                || billing.coupon?.validUntil;
+            const details = [];
+            if (discountLabel) {
+                details.push(discountLabel);
+            }
+            if (couponValidUntil) {
+                details.push(`até ${formatDate(couponValidUntil)}`);
+            }
+            const detailsLabel = details.length ? ` (${details.join(' • ')})` : '';
+            summaryCoupon.textContent = `Cupom aplicado: ${couponCode}${detailsLabel}`;
+        } else {
+            summaryCoupon.textContent = 'Cupom aplicado: nenhum';
+        }
+    }
+
+    const summaryUpdated = document.getElementById('billing-summary-updated');
+    if (summaryUpdated) {
+        summaryUpdated.textContent = `Última atualização: ${formatDate(billing.updated_at || municipio.updated_at)}`;
+    }
+
+    setBillingFormDisabled(false);
+}
+
+async function loadBillingForMunicipio(municipioId, options = {}) {
+    if (!municipioId) {
+        resetBillingSummary();
+        setBillingFormDisabled(true);
+        billingMunicipioData = null;
+        return;
+    }
+
+    try {
+        billingFormIsLoading = true;
+        setBillingFormDisabled(true);
+        if (!options.skipLoader) {
+            showLoading(true);
+        }
+        const details = await loadMunicipioDetails(municipioId);
+        billingMunicipioData = details;
+        fillBillingForm(details);
+    } catch (error) {
+        console.error('Erro ao carregar dados de faturamento do município:', error);
+        showError('Não foi possível carregar o faturamento deste município.');
+        billingMunicipioData = null;
+        resetBillingSummary();
+    } finally {
+        billingFormIsLoading = false;
+        setBillingFormDisabled(!billingMunicipioData);
+        showLoading(false);
+    }
+}
+
+function normalizeNullableNumber(value, { integer = false } = {}) {
+    if (value === null || value === undefined || value === '') {
+        return null;
+    }
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) {
+        return null;
+    }
+    return integer ? Math.round(parsed) : parsed;
+}
+
+function collectBillingValidationErrors({
+    planType,
+    billingStatus,
+    monthlyValue,
+    monthlyRaw,
+    licenseRawValue,
+    existingBilling,
+    municipioContext,
+    maxUsers,
+    maxUsersRaw,
+    paymentDay,
+    paymentDayRaw,
+    installments,
+    installmentsRaw
+}) {
+    const errors = [];
+    const normalizedStatus = normalizeValue(billingStatus) || 'pending';
+    const municipioBase = municipioContext || {};
+    const baseBilling = municipioBase.billing || {};
+    const effectivePlan = normalizeValue(planType)
+        || normalizeValue(existingBilling.plan_type)
+        || normalizeValue(baseBilling.plan_type)
+        || normalizeValue(municipioBase.license_type)
+        || normalizeValue(municipioBase.plano);
+
+    const effectiveMonthly = monthlyRaw === ''
+        ? normalizeNullableNumber(
+            existingBilling.monthly_value
+            ?? baseBilling.monthly_value
+            ?? municipioBase.custom_monthly_value
+            ?? municipioBase.monthly_value
+        )
+        : monthlyValue;
+
+    const effectiveLicense = licenseRawValue
+        ? licenseRawValue
+        : (
+            existingBilling.contract_end
+            || baseBilling.contract_end
+            || municipioBase.license_expires
+            || municipioBase.data_vencimento_licenca
+        );
+
+    const effectivePaymentDay = paymentDayRaw === ''
+        ? normalizeNullableNumber(
+            existingBilling.payment_day
+            ?? baseBilling.payment_day,
+            { integer: true }
+        )
+        : paymentDay;
+
+    const effectiveInstallments = installmentsRaw === ''
+        ? normalizeNullableNumber(
+            existingBilling.installments
+            ?? baseBilling.installments,
+            { integer: true }
+        )
+        : installments;
+
+    const statusRequiringPlan = ['active', 'paused', 'suspended'];
+
+    if (monthlyRaw !== '' && monthlyValue === null) {
+        errors.push('Valor mensal inválido.');
+    }
+
+    if (maxUsersRaw !== '' && maxUsers === null) {
+        errors.push('Limite máximo de usuários inválido.');
+    }
+
+    if (paymentDayRaw !== '' && paymentDay === null) {
+        errors.push('Dia de pagamento inválido.');
+    }
+
+    if (installmentsRaw !== '' && installments === null) {
+        errors.push('Número de parcelas inválido.');
+    }
+
+    if (licenseRawValue) {
+        const licenseTest = new Date(licenseRawValue);
+        if (Number.isNaN(licenseTest.getTime())) {
+            errors.push('Informe uma data de licença válida.');
+        }
+    }
+
+    if (statusRequiringPlan.includes(normalizedStatus) && !effectivePlan) {
+        errors.push('Selecione um plano antes de ativar ou pausar o faturamento.');
+    }
+
+    if (normalizedStatus === 'active') {
+        const hasMonthlyInput = monthlyRaw !== '' || effectiveMonthly !== null;
+        if (hasMonthlyInput) {
+            if (effectiveMonthly !== null && Number.isNaN(Number(effectiveMonthly))) {
+                errors.push('Informe um valor mensal válido para faturamento ativo.');
+            } else if (effectiveMonthly !== null && Number(effectiveMonthly) < 0) {
+                errors.push('O valor mensal não pode ser negativo quando o faturamento está ativo.');
+            }
+        }
+        if (!effectiveLicense) {
+            errors.push('Defina a data de vencimento da licença para faturamento ativo.');
+        }
+    }
+
+    if (monthlyRaw !== '' && monthlyValue !== null && Number(monthlyValue) < 0) {
+        errors.push('O valor mensal não pode ser negativo.');
+    }
+
+    if (maxUsers !== null && Number(maxUsers) <= 0) {
+        errors.push('Limite máximo de usuários deve ser maior que zero.');
+    }
+
+    if (paymentDayRaw !== '' || (effectivePaymentDay !== null && effectivePaymentDay !== undefined)) {
+        const paymentDayValue = paymentDayRaw !== '' ? paymentDay : effectivePaymentDay;
+        if (paymentDayValue !== null && paymentDayValue !== undefined && (paymentDayValue < 1 || paymentDayValue > 31)) {
+            errors.push('O dia de pagamento deve estar entre 1 e 31.');
+        }
+    }
+
+    if (installmentsRaw !== '' || (effectiveInstallments !== null && effectiveInstallments !== undefined)) {
+        const installmentsValue = installmentsRaw !== '' ? installments : effectiveInstallments;
+        if (installmentsValue !== null && installmentsValue !== undefined && installmentsValue < 1) {
+            errors.push('O número de parcelas deve ser pelo menos 1.');
+        }
+    }
+
+    return errors;
+}
+
+async function submitBillingConfig(event) {
+    event.preventDefault();
+
+    if (!billingMunicipioSelected) {
+        showError('Selecione um município antes de salvar.');
+        return;
+    }
+
+    if (billingFormIsLoading) {
+        showError('Aguarde o carregamento dos dados antes de salvar.');
+        return;
+    }
+
+    const planSelect = document.getElementById('billing-plan-type');
+    const statusSelect = document.getElementById('billing-status');
+    const maxUsersInput = document.getElementById('billing-max-users');
+    const licenseInput = document.getElementById('billing-license-expires');
+    const monthlyInput = document.getElementById('billing-monthly-value');
+    const paymentDayInput = document.getElementById('billing-payment-day');
+    const installmentsInput = document.getElementById('billing-installments');
+    const notesInput = document.getElementById('billing-notes');
+
+    const planType = normalizeValue(planSelect?.value || '') || null;
+    const billingStatus = normalizeValue(statusSelect?.value || 'pending') || 'pending';
+    const maxUsers = normalizeNullableNumber(maxUsersInput?.value, { integer: true });
+    const licenseRawValue = licenseInput ? licenseInput.value : '';
+    const monthlyValue = normalizeNullableNumber(monthlyInput?.value);
+    const paymentDay = normalizeNullableNumber(paymentDayInput?.value, { integer: true });
+    const installments = normalizeNullableNumber(installmentsInput?.value, { integer: true });
+    const notes = notesInput?.value?.trim() || '';
+
+    const existingBilling = { ...(billingMunicipioData?.billing || {}) };
+    const monthlyRaw = monthlyInput?.value ?? '';
+    const paymentDayRaw = paymentDayInput?.value ?? '';
+    const installmentsRaw = installmentsInput?.value ?? '';
+    const maxUsersRaw = maxUsersInput?.value ?? '';
+
+    const validationErrors = collectBillingValidationErrors({
+        planType,
+        billingStatus,
+        monthlyValue,
+        monthlyRaw,
+        licenseRawValue,
+        existingBilling,
+        municipioContext: billingMunicipioData,
+        maxUsers,
+        maxUsersRaw,
+        paymentDay,
+        paymentDayRaw,
+        installments,
+        installmentsRaw
+    });
+
+    if (validationErrors.length) {
+        showError(validationErrors[0]);
+        return;
+    }
+
+    const licenseIso = licenseRawValue ? new Date(licenseRawValue).toISOString() : null;
+    const municipioStatus = billingStatus === 'inactive'
+        ? 'inactive'
+        : (billingStatus === 'pending' ? 'pending' : 'active');
+    const nowIso = new Date().toISOString();
+
+    const resolvedMonthlyValue = monthlyRaw === ''
+        ? null
+        : (monthlyValue ?? existingBilling.monthly_value ?? null);
+    const resolvedEffectiveValue = monthlyRaw === ''
+        ? null
+        : (monthlyValue ?? existingBilling.effective_monthly_value ?? existingBilling.monthly_value ?? null);
+    const resolvedPaymentDay = paymentDayRaw === ''
+        ? null
+        : (paymentDay ?? existingBilling.payment_day ?? null);
+    const resolvedInstallments = installmentsRaw === ''
+        ? null
+        : (installments ?? existingBilling.installments ?? null);
+
+    const billingPayload = {
+        ...existingBilling,
+        status: billingStatus,
+        plan_type: planType,
+        monthly_value: resolvedMonthlyValue,
+        effective_monthly_value: resolvedEffectiveValue,
+        installments: resolvedInstallments,
+        payment_day: resolvedPaymentDay,
+        contract_end: licenseRawValue === '' ? null : (licenseIso ?? existingBilling.contract_end ?? null),
+        notes,
+        updated_at: nowIso,
+        updated_by: currentUser?.email || null
+    };
+
+    billingPayload.coupon_code = existingBilling.coupon_code || null;
+    billingPayload.coupon_discount_type = existingBilling.coupon_discount_type || null;
+    billingPayload.coupon_discount_value = existingBilling.coupon_discount_value || null;
+    billingPayload.coupon_valid_until = existingBilling.coupon_valid_until || null;
+    billingPayload.coupon_applied_at = existingBilling.coupon_applied_at || null;
+
+    const payload = {
+        license_type: planType || billingMunicipioData?.license_type || 'pending',
+        billing_status: billingStatus,
+        status: municipioStatus,
+        billing: billingPayload
+    };
+
+    if (maxUsers !== null) {
+        payload.max_usuarios = maxUsers;
+        payload.max_users = maxUsers;
+    }
+
+    if (licenseIso) {
+        payload.license_expires = licenseIso;
+        payload.data_vencimento_licenca = licenseIso;
+    } else {
+        payload.license_expires = null;
+        payload.data_vencimento_licenca = null;
+    }
+
+    try {
+        billingFormIsLoading = true;
+        setBillingFormDisabled(true);
+        showLoading(true);
+        await API.updateMunicipio(billingMunicipioSelected, payload);
+        showSuccess('Configurações de faturamento atualizadas com sucesso!');
+        await loadDashboardData();
+        await loadBillingForMunicipio(billingMunicipioSelected, { skipLoader: true });
+    } catch (error) {
+        console.error('Erro ao atualizar faturamento do município:', error);
+        showError(error?.message || 'Falha ao salvar configuração de faturamento.');
+    } finally {
+        billingFormIsLoading = false;
+        setBillingFormDisabled(false);
+        showLoading(false);
+    }
+}
+
+function handleBillingMunicipioChange(event) {
+    const municipioId = event.target.value;
+    billingMunicipioSelected = municipioId;
+    if (!municipioId) {
+        resetBillingSummary();
+        setBillingFormDisabled(true);
+        billingMunicipioData = null;
+        return;
+    }
+    loadBillingForMunicipio(municipioId, { skipLoader: false });
+}
+
+async function refreshBillingData() {
+    if (!billingMunicipioSelected) {
+        showError('Selecione um município para atualizar.');
+        return;
+    }
+    await loadBillingForMunicipio(billingMunicipioSelected, { skipLoader: false });
+}
+
+// ============================================
+// RELATÓRIOS
+// ============================================
+
+function isReportsSectionVisible() {
+    const section = document.getElementById('section-relatorios');
+    return section ? !section.classList.contains('hidden') : false;
+}
+
+function setReportExpiringLoading(isLoading) {
+    reportsState.expiring.isLoading = isLoading;
+    const loader = document.getElementById('reports-expiring-loading');
+    if (loader) {
+        loader.classList.toggle('hidden', !isLoading);
+    }
+    const refreshBtn = document.getElementById('reports-expiry-refresh');
+    if (refreshBtn) {
+        refreshBtn.disabled = isLoading;
+        refreshBtn.textContent = isLoading ? 'Atualizando...' : 'Atualizar';
+    }
+    const rangeSelect = document.getElementById('reports-expiry-range');
+    if (rangeSelect) {
+        rangeSelect.disabled = isLoading;
+    }
+}
+
+function setReportCapacityLoading(isLoading) {
+    reportsState.capacity.isLoading = isLoading;
+    const loader = document.getElementById('reports-capacity-loading');
+    if (loader) {
+        loader.classList.toggle('hidden', !isLoading);
+    }
+    const refreshBtn = document.getElementById('reports-capacity-refresh');
+    if (refreshBtn) {
+        refreshBtn.disabled = isLoading;
+        refreshBtn.textContent = isLoading ? 'Atualizando...' : 'Atualizar';
+    }
+}
+
+function updateReportsOverview() {
+    const expiringCount = reportsState.expiring.data.length;
+    const expiringCountEl = document.getElementById('reports-expiring-total');
+    if (expiringCountEl) {
+        expiringCountEl.textContent = String(expiringCount);
+    }
+
+    const rangeLabelEl = document.getElementById('reports-expiring-range-label');
+    if (rangeLabelEl) {
+        rangeLabelEl.textContent = `Monitorando próximos ${reportsState.expiring.rangeDays} dias`;
+    }
+
+    const orderedExpirations = [...reportsState.expiring.data]
+        .filter(item => item && Number.isFinite(item.days_until_expiry))
+        .sort((a, b) => a.days_until_expiry - b.days_until_expiry);
+    const nextExpiration = orderedExpirations[0];
+
+    const nextValueEl = document.getElementById('reports-next-expiration-value');
+    const nextMunicipioEl = document.getElementById('reports-next-expiration-municipio');
+
+    if (nextExpiration) {
+        if (nextValueEl) {
+            nextValueEl.textContent = formatDaysLabel(nextExpiration.days_until_expiry);
+        }
+        if (nextMunicipioEl) {
+            const details = [];
+            if (nextExpiration.expires_at) {
+                details.push(formatDate(nextExpiration.expires_at));
+            }
+            if (nextExpiration.municipio_nome) {
+                details.push(nextExpiration.municipio_nome);
+            }
+            nextMunicipioEl.textContent = details.length
+                ? details.join(' • ')
+                : 'Licença próxima do vencimento';
+        }
+    } else {
+        if (nextValueEl) nextValueEl.textContent = '-';
+        if (nextMunicipioEl) nextMunicipioEl.textContent = 'Nenhuma licença vencendo no período monitorado.';
+    }
+
+    const criticalUsage = reportsState.capacity.data.filter(item => {
+        const percent = Number(item?.users?.usage_percent);
+        return Number.isFinite(percent) && percent >= 90;
+    });
+
+    const criticalCountEl = document.getElementById('reports-critical-count');
+    if (criticalCountEl) {
+        criticalCountEl.textContent = String(criticalUsage.length);
+    }
+
+    const criticalSummaryEl = document.getElementById('reports-critical-summary');
+    if (criticalSummaryEl) {
+        criticalSummaryEl.textContent = 'Ocupação ≥ 90% do limite contratado';
+    }
+
+    const totalMonitoredEl = document.getElementById('reports-total-monitored');
+    if (totalMonitoredEl) {
+        totalMonitoredEl.textContent = String(reportsState.capacity.data.length);
+    }
+
+    const totalMonitoredSubtitleEl = document.getElementById('reports-total-monitored-subtitle');
+    if (totalMonitoredSubtitleEl) {
+        if (reportsState.lastLoadedAt) {
+            totalMonitoredSubtitleEl.textContent = `Atualizado ${formatDateTime(reportsState.lastLoadedAt)}`;
+        } else {
+            totalMonitoredSubtitleEl.textContent = 'Dados consolidados dos municípios';
+        }
+    }
+
+    const usageValues = reportsState.capacity.data
+        .map(item => Number(item?.users?.usage_percent))
+        .filter(value => Number.isFinite(value));
+    const averageUsage = usageValues.length
+        ? Math.round(usageValues.reduce((total, value) => total + value, 0) / usageValues.length)
+        : null;
+
+    const averageUsageEl = document.getElementById('reports-average-usage');
+    if (averageUsageEl) {
+        averageUsageEl.textContent = averageUsage !== null ? `${averageUsage}%` : '-';
+    }
+
+    const averageUsageSubtitleEl = document.getElementById('reports-average-usage-subtitle');
+    if (averageUsageSubtitleEl) {
+        averageUsageSubtitleEl.textContent = usageValues.length
+            ? 'Média de ocupação dos limites de usuários'
+            : 'Sem limites de usuários configurados';
+    }
+}
+
+function renderExpiringLicenses() {
+    const tableBody = document.getElementById('reports-expiring-table');
+    const emptyState = document.getElementById('reports-expiring-empty');
+    const summaryEl = document.getElementById('reports-expiring-summary');
+
+    if (!tableBody || !emptyState) {
+        return;
+    }
+
+    const items = [...reportsState.expiring.data]
+        .map(normalizeExpiringLicense)
+        .filter(Boolean)
+        .sort((a, b) => {
+            const daysA = Number.isFinite(a.days_until_expiry) ? a.days_until_expiry : Infinity;
+            const daysB = Number.isFinite(b.days_until_expiry) ? b.days_until_expiry : Infinity;
+            return daysA - daysB;
+        });
+
+    if (!items.length) {
+        tableBody.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        if (summaryEl) {
+            summaryEl.textContent = 'Nenhuma licença vence no período monitorado.';
+        }
+        return;
+    }
+
+    emptyState.classList.add('hidden');
+    if (summaryEl) {
+        summaryEl.textContent = `${items.length} licença(s) vencem em até ${reportsState.expiring.rangeDays} dias.`;
+    }
+
+    const rows = items.map(item => {
+        const municipioId = escapeHtml(item.municipio_id || '-');
+        const municipioNome = escapeHtml(item.municipio_nome || municipioId);
+        const planLabel = escapeHtml(formatPlanoLabel(item.license_type));
+        const planClassMap = {
+            premium: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+            profissional: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+            professional: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+            standard: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+            pending: 'bg-gray-200 text-gray-700 dark:bg-gray-700/40 dark:text-gray-300',
+            pendente: 'bg-gray-200 text-gray-700 dark:bg-gray-700/40 dark:text-gray-300'
+        };
+        const planClass = planClassMap[normalizeValue(item.license_type)]
+            || 'bg-slate-200 text-slate-700 dark:bg-slate-700/40 dark:text-slate-300';
+
+        const daysValue = Number(item.days_until_expiry);
+        let daysClass = 'text-text-secondary dark:text-gray-400';
+        if (Number.isFinite(daysValue)) {
+            if (daysValue < 0) {
+                daysClass = 'text-rose-600 font-semibold dark:text-rose-400';
+            } else if (daysValue <= 7) {
+                daysClass = 'text-amber-600 font-semibold dark:text-amber-400';
+            } else {
+                daysClass = 'text-emerald-600 font-semibold dark:text-emerald-400';
+            }
+        }
+
+        const expiresLabel = item.expires_at ? formatDate(item.expires_at) : 'Sem data';
+
+        return `
+            <tr class="border-b border-border-light/60 dark:border-border-dark/60">
+                <td class="px-6 py-4 align-top">
+                    <p class="font-medium">${municipioNome}</p>
+                    <p class="text-xs text-text-secondary dark:text-gray-400">ID: ${municipioId}</p>
+                </td>
+                <td class="px-6 py-4 align-top">
+                    <span class="px-2 py-1 text-xs font-medium rounded-full ${planClass}">${planLabel}</span>
+                </td>
+                <td class="px-6 py-4 align-top">
+                    <p class="text-sm">${expiresLabel}</p>
+                </td>
+                <td class="px-6 py-4 align-top">
+                    <span class="text-sm ${daysClass}">${formatDaysLabel(item.days_until_expiry)}</span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    tableBody.innerHTML = rows;
+}
+
+function renderCapacityTable() {
+    const tableBody = document.getElementById('reports-capacity-table');
+    const emptyState = document.getElementById('reports-capacity-empty');
+    const summaryEl = document.getElementById('reports-capacity-summary');
+
+    if (!tableBody || !emptyState) {
+        return;
+    }
+
+    let items = [...reportsState.capacity.data].map(normalizeMunicipalityReportStat).filter(Boolean);
+
+    if (reportsFilters.plan !== 'all') {
+        items = items.filter(item => normalizeValue(item.license_type) === reportsFilters.plan);
+    }
+
+    if (reportsFilters.status !== 'all') {
+        items = items.filter(item => {
+            const normalizedStatus = normalizeValue(item.status || 'pending');
+            switch (reportsFilters.status) {
+                case 'ativo':
+                    return normalizedStatus === 'ativo' || normalizedStatus === 'active';
+                case 'inativo':
+                    return normalizedStatus === 'inativo' || normalizedStatus === 'inactive';
+                case 'pendente':
+                    return normalizedStatus === 'pendente' || normalizedStatus === 'pending';
+                default:
+                    return normalizedStatus === reportsFilters.status;
+            }
+        });
+    }
+
+    if (reportsFilters.onlyCritical) {
+        items = items.filter(item => {
+            const percent = Number(item?.users?.usage_percent);
+            return Number.isFinite(percent) && percent >= 90;
+        });
+    }
+
+    items.sort((a, b) => {
+        const usageA = Number(a?.users?.usage_percent);
+        const usageB = Number(b?.users?.usage_percent);
+        const valueA = Number.isFinite(usageA) ? usageA : -1;
+        const valueB = Number.isFinite(usageB) ? usageB : -1;
+        return valueB - valueA;
+    });
+
+    if (!items.length) {
+        tableBody.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        if (summaryEl) {
+            summaryEl.textContent = 'Nenhum município atende aos filtros selecionados.';
+        }
+        return;
+    }
+
+    emptyState.classList.add('hidden');
+    if (summaryEl) {
+        summaryEl.textContent = `${items.length} município(s) listados conforme os filtros atuais.`;
+    }
+
+    const rows = items.map(item => {
+        const municipioId = escapeHtml(item.municipio_id || '-');
+        const municipioNome = escapeHtml(item.municipio_nome || municipioId);
+
+        const planLabel = escapeHtml(formatPlanoLabel(item.license_type));
+        const planClassMap = {
+            premium: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+            profissional: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+            professional: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300',
+            standard: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300',
+            pending: 'bg-gray-200 text-gray-700 dark:bg-gray-700/40 dark:text-gray-300',
+            pendente: 'bg-gray-200 text-gray-700 dark:bg-gray-700/40 dark:text-gray-300'
+        };
+        const planClass = planClassMap[normalizeValue(item.license_type)]
+            || 'bg-slate-200 text-slate-700 dark:bg-slate-700/40 dark:text-slate-300';
+
+        const currentUsers = Number(item?.users?.current) || 0;
+        const maxUsers = Number.isFinite(item?.users?.max) && item.users.max !== null ? item.users.max : null;
+        const usagePercent = Number(item?.users?.usage_percent);
+        const usageDisplay = Number.isFinite(usagePercent) ? `${usagePercent}%` : 'Sem dado';
+        const usageBarWidth = Number.isFinite(usagePercent) ? Math.min(100, Math.max(0, usagePercent)) : 0;
+
+        let usageColor = 'bg-primary';
+        if (Number.isFinite(usagePercent)) {
+            if (usagePercent >= 100) {
+                usageColor = 'bg-rose-500';
+            } else if (usagePercent >= 90) {
+                usageColor = 'bg-amber-500';
+            } else {
+                usageColor = 'bg-emerald-500';
+            }
+        } else {
+            usageColor = 'bg-gray-400 dark:bg-gray-600';
+        }
+
+        let usageTextClass = 'text-text-secondary dark:text-gray-400';
+        if (Number.isFinite(usagePercent)) {
+            if (usagePercent >= 100) {
+                usageTextClass = 'text-rose-600 font-semibold dark:text-rose-400';
+            } else if (usagePercent >= 90) {
+                usageTextClass = 'text-amber-600 font-semibold dark:text-amber-400';
+            } else {
+                usageTextClass = 'text-emerald-600 font-semibold dark:text-emerald-400';
+            }
+        }
+
+        const statusNormalized = normalizeValue(item.status || 'pending');
+        const statusLabel = escapeHtml(formatStatusLabel(statusNormalized));
+        const statusClassMap = {
+            ativo: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+            active: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+            inativo: 'bg-gray-200 text-gray-700 dark:bg-gray-700/40 dark:text-gray-300',
+            inactive: 'bg-gray-200 text-gray-700 dark:bg-gray-700/40 dark:text-gray-300',
+            pendente: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+            pending: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+            suspenso: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300',
+            paused: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
+        };
+        const statusClass = statusClassMap[statusNormalized]
+            || 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300';
+
+        const licenseLabel = item.license_expires ? formatDate(item.license_expires) : 'Não configurada';
+
+        return `
+            <tr class="border-b border-border-light/60 dark:border-border-dark/60">
+                <td class="px-6 py-4 align-top">
+                    <p class="font-medium">${municipioNome}</p>
+                    <p class="text-xs text-text-secondary dark:text-gray-400">ID: ${municipioId}</p>
+                </td>
+                <td class="px-6 py-4 align-top">
+                    <span class="px-2 py-1 text-xs font-medium rounded-full ${planClass}">${planLabel}</span>
+                </td>
+                <td class="px-6 py-4 align-top">
+                    <div class="flex items-center justify-between text-sm">
+                        <span>${currentUsers}${maxUsers !== null ? ` / ${maxUsers}` : ''}</span>
+                        <span class="${usageTextClass}">${usageDisplay}</span>
+                    </div>
+                    <div class="mt-2 h-2 rounded-full bg-gray-200 dark:bg-gray-700">
+                        <div class="h-2 rounded-full ${usageColor}" style="width: ${usageBarWidth}%;"></div>
+                    </div>
+                </td>
+                <td class="px-6 py-4 align-top">
+                    <p class="text-sm">${licenseLabel}</p>
+                </td>
+                <td class="px-6 py-4 align-top">
+                    <span class="px-2 py-1 text-xs font-medium rounded-full ${statusClass}">${statusLabel}</span>
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    tableBody.innerHTML = rows;
+}
+
+async function loadExpiringLicenses(rangeDays, options = {}) {
+    const { force = false, silent = false } = options;
+    const targetRange = parseInt(rangeDays, 10) || 30;
+    const shouldFetch = force
+        || reportsState.expiring.rangeDays !== targetRange
+        || !reportsState.expiring.data.length;
+
+    reportsState.expiring.rangeDays = targetRange;
+
+    const rangeSelect = document.getElementById('reports-expiry-range');
+    if (rangeSelect && rangeSelect.value !== String(targetRange)) {
+        rangeSelect.value = String(targetRange);
+    }
+
+    if (!shouldFetch) {
+        renderExpiringLicenses();
+        updateReportsOverview();
+        return;
+    }
+
+    setReportExpiringLoading(true);
+
+    try {
+        const response = await API.getLicencasExpirando(targetRange);
+        const list = Array.isArray(response?.expiring_licenses) ? response.expiring_licenses : [];
+        reportsState.expiring.data = list.map(normalizeExpiringLicense).filter(Boolean);
+        const backendRange = Number(response?.period_days);
+        if (Number.isFinite(backendRange) && backendRange > 0) {
+            reportsState.expiring.rangeDays = backendRange;
+        }
+    } catch (error) {
+        console.error('Erro ao carregar licenças a vencer:', error);
+        if (!silent) {
+            showError(error?.message || 'Erro ao carregar licenças a vencer.');
+        }
+        throw error;
+    } finally {
+        setReportExpiringLoading(false);
+        renderExpiringLicenses();
+        updateReportsOverview();
+    }
+}
+
+async function loadCapacityStats(options = {}) {
+    const { force = false, silent = false } = options;
+    const shouldFetch = force || !reportsState.capacity.data.length || reportsState.needsRefresh;
+
+    if (!shouldFetch) {
+        renderCapacityTable();
+        updateReportsOverview();
+        return;
+    }
+
+    setReportCapacityLoading(true);
+
+    try {
+        const response = await API.getMunicipiosStats();
+        const list = Array.isArray(response?.municipalities_stats) ? response.municipalities_stats : [];
+        reportsState.capacity.data = list.map(normalizeMunicipalityReportStat).filter(Boolean);
+    } catch (error) {
+        console.error('Erro ao carregar estatísticas dos municípios:', error);
+        if (!silent) {
+            showError(error?.message || 'Erro ao carregar estatísticas dos municípios.');
+        }
+        throw error;
+    } finally {
+        setReportCapacityLoading(false);
+        renderCapacityTable();
+        updateReportsOverview();
+    }
+}
+
+async function loadReportsData(options = {}) {
+    const { force = false, silent = false } = options;
+    try {
+        await Promise.all([
+            loadExpiringLicenses(reportsState.expiring.rangeDays, { force, silent }),
+            loadCapacityStats({ force, silent })
+        ]);
+        reportsState.lastLoadedAt = new Date();
+        reportsState.needsRefresh = false;
+        reportsInitialized = true;
+    } catch (error) {
+        reportsState.needsRefresh = true;
+        console.error('Erro ao carregar relatórios consolidados:', error);
+        if (!silent) {
+            // Erros específicos já foram tratados individualmente.
+        }
+    }
+}
+
+function setupReportsControls() {
+    const rangeSelect = document.getElementById('reports-expiry-range');
+    if (rangeSelect && !rangeSelect.dataset.bound) {
+        rangeSelect.value = String(reportsState.expiring.rangeDays);
+        rangeSelect.addEventListener('change', event => {
+            const value = parseInt(event.target.value, 10) || reportsState.expiring.rangeDays;
+            loadExpiringLicenses(value, { force: true }).catch(() => {});
+        });
+        rangeSelect.dataset.bound = 'true';
+    }
+
+    const expiryRefreshBtn = document.getElementById('reports-expiry-refresh');
+    if (expiryRefreshBtn && !expiryRefreshBtn.dataset.bound) {
+        expiryRefreshBtn.addEventListener('click', () => {
+            loadExpiringLicenses(reportsState.expiring.rangeDays, { force: true }).catch(() => {});
+        });
+        expiryRefreshBtn.dataset.bound = 'true';
+    }
+
+    const planSelect = document.getElementById('reports-capacity-plan');
+    if (planSelect && !planSelect.dataset.bound) {
+        planSelect.value = reportsFilters.plan;
+        planSelect.addEventListener('change', event => {
+            reportsFilters.plan = event.target.value || 'all';
+            renderCapacityTable();
+        });
+        planSelect.dataset.bound = 'true';
+    }
+
+    const statusSelect = document.getElementById('reports-capacity-status');
+    if (statusSelect && !statusSelect.dataset.bound) {
+        statusSelect.value = reportsFilters.status;
+        statusSelect.addEventListener('change', event => {
+            reportsFilters.status = event.target.value || 'all';
+            renderCapacityTable();
+        });
+        statusSelect.dataset.bound = 'true';
+    }
+
+    const criticalCheckbox = document.getElementById('reports-capacity-only-critical');
+    if (criticalCheckbox && !criticalCheckbox.dataset.bound) {
+        criticalCheckbox.checked = reportsFilters.onlyCritical;
+        criticalCheckbox.addEventListener('change', event => {
+            reportsFilters.onlyCritical = event.target.checked;
+            renderCapacityTable();
+        });
+        criticalCheckbox.dataset.bound = 'true';
+    }
+
+    const capacityRefreshBtn = document.getElementById('reports-capacity-refresh');
+    if (capacityRefreshBtn && !capacityRefreshBtn.dataset.bound) {
+        capacityRefreshBtn.addEventListener('click', () => {
+            loadCapacityStats({ force: true }).catch(() => {});
+        });
+        capacityRefreshBtn.dataset.bound = 'true';
+    }
+}
+
 // ============================================
 // CRUD DE MUNICÍPIOS
 // ============================================
+
+function renderCouponsList() {
+    const listEl = document.getElementById('coupons-list');
+    const emptyStateEl = document.getElementById('coupons-empty-state');
+    const summaryEl = document.getElementById('coupons-summary');
+
+    if (!listEl || !emptyStateEl) {
+        return;
+    }
+
+    const coupons = Array.isArray(couponsData)
+        ? [...couponsData].map(normalizeCoupon).filter(Boolean)
+        : [];
+
+    couponsData = coupons;
+
+    if (!coupons.length) {
+        listEl.innerHTML = '';
+        emptyStateEl.classList.remove('hidden');
+        if (summaryEl) {
+            summaryEl.textContent = couponsLoadError
+                ? 'Não foi possível carregar os cupons. Atualize a página ou refaça o login.'
+                : 'Nenhum cupom cadastrado no momento.';
+        }
+        return;
+    }
+
+    emptyStateEl.classList.add('hidden');
+    couponsLoadError = null;
+
+    const sortedCoupons = [...coupons].sort((a, b) => {
+        const timeA = a.created_at ? new Date(a.created_at).getTime() : 0;
+        const timeB = b.created_at ? new Date(b.created_at).getTime() : 0;
+        return timeB - timeA;
+    });
+
+    const statusStyles = {
+        active: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300',
+        scheduled: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300',
+        expired: 'bg-rose-100 text-rose-700 dark:bg-rose-900/30 dark:text-rose-300',
+        inactive: 'bg-gray-200 text-gray-700 dark:bg-gray-700/40 dark:text-gray-300'
+    };
+
+    const statusLabels = {
+        active: 'Ativo',
+        scheduled: 'Agendado',
+        expired: 'Expirado',
+        inactive: 'Inativo'
+    };
+
+    const cardsHtml = sortedCoupons.map(coupon => {
+        const statusKey = (coupon.current_status || coupon.status || 'active').toLowerCase();
+        const statusClass = statusStyles[statusKey] || statusStyles.active;
+        const statusLabel = statusLabels[statusKey] || 'Ativo';
+        const discountLabel = formatCouponDiscount(coupon);
+        const targetLabel = resolveCouponTargetName(coupon);
+        const validityLabel = resolveCouponValidity(coupon);
+        const usageCount = coupon.usage_count || 0;
+        const usageLabel = coupon.max_uses
+            ? `${usageCount} de ${coupon.max_uses}`
+            : usageCount === 0
+                ? 'Uso ilimitado'
+                : `${usageCount} usos (ilimitado)`;
+        const createdAt = coupon.created_at ? formatDate(coupon.created_at) : '-';
+        const createdBy = coupon.created_by || coupon.criado_por || '';
+        const createdByHtml = createdBy
+            ? `<span>Por ${escapeHtml(createdBy)}</span>`
+            : '';
+
+        return `
+            <div class="rounded-xl border border-border-light dark:border-border-dark bg-white dark:bg-slate-900/40 p-4 space-y-4 shadow-sm">
+                <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-xs uppercase tracking-wide text-text-secondary/70 dark:text-gray-500">${escapeHtml(coupon.code || '')}</p>
+                        <p class="text-base font-semibold text-text-primary dark:text-gray-100">${escapeHtml(coupon.description || 'Sem descrição')}</p>
+                    </div>
+                    <span class="px-3 py-1 text-xs font-semibold rounded-full ${statusClass}">${statusLabel}</span>
+                </div>
+                <div class="grid gap-3 md:grid-cols-4 text-sm text-text-secondary dark:text-gray-400">
+                    <div>
+                        <p class="text-xs uppercase tracking-wide text-text-secondary/70 dark:text-gray-500">Desconto</p>
+                        <p class="font-medium text-text-primary dark:text-gray-100">${escapeHtml(discountLabel)}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs uppercase tracking-wide text-text-secondary/70 dark:text-gray-500">Abrangência</p>
+                        <p class="font-medium text-text-primary dark:text-gray-100">${escapeHtml(targetLabel)}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs uppercase tracking-wide text-text-secondary/70 dark:text-gray-500">Validade</p>
+                        <p class="font-medium text-text-primary dark:text-gray-100">${escapeHtml(validityLabel)}</p>
+                    </div>
+                    <div>
+                        <p class="text-xs uppercase tracking-wide text-text-secondary/70 dark:text-gray-500">Usos</p>
+                        <p class="font-medium text-text-primary dark:text-gray-100">${escapeHtml(usageLabel)}</p>
+                    </div>
+                </div>
+                <div class="flex flex-wrap items-center justify-between text-xs text-text-secondary/80 dark:text-gray-400 gap-2">
+                    <span>Criado em ${escapeHtml(createdAt)}</span>
+                    ${createdByHtml}
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    listEl.innerHTML = cardsHtml;
+
+    if (summaryEl) {
+        const total = sortedCoupons.length;
+        summaryEl.textContent = total === 1
+            ? '1 cupom disponível'
+            : `${total} cupons disponíveis`;
+    }
+}
+
+async function fetchCouponsAndRender(options = {}) {
+    const { skipLoader = false } = options;
+
+    try {
+        if (!skipLoader) {
+            showLoading(true);
+        }
+
+        const response = await API.getCupons();
+        const rawList = Array.isArray(response?.coupons)
+            ? response.coupons
+            : Array.isArray(response?.data)
+                ? response.data
+                : Array.isArray(response)
+                    ? response
+                    : [];
+
+        couponsData = rawList
+            .map(normalizeCoupon)
+            .filter(Boolean);
+
+        renderCouponsList();
+    } catch (error) {
+        console.error('Erro ao carregar cupons:', error);
+        if (!skipLoader) {
+            showError(error?.message || 'Erro ao carregar cupons de desconto.');
+        }
+    } finally {
+        if (!skipLoader) {
+            showLoading(false);
+        }
+    }
+}
+
+function resetCouponForm() {
+    const form = document.getElementById('coupon-create-form');
+    if (form) {
+        form.reset();
+    }
+
+    const typeSelect = document.getElementById('coupon-discount-type');
+    if (typeSelect) {
+        typeSelect.value = 'percentage';
+    }
+
+    updateCouponDiscountInputs();
+}
+
+function openCouponModal() {
+    resetCouponForm();
+    populateCouponMunicipioSelect();
+
+    const modal = document.getElementById('couponModal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+
+    const codeInput = document.getElementById('coupon-code');
+    if (codeInput) {
+        codeInput.focus();
+        codeInput.select();
+    }
+}
+
+function closeCouponModal() {
+    const modal = document.getElementById('couponModal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    resetCouponForm();
+}
+
+function updateCouponDiscountInputs() {
+    const typeSelect = document.getElementById('coupon-discount-type');
+    const valueInput = document.getElementById('coupon-value');
+    const valueLabel = document.getElementById('coupon-value-label');
+
+    if (!typeSelect || !valueInput || !valueLabel) {
+        return;
+    }
+
+    const type = (typeSelect.value || 'percentage').toLowerCase();
+    if (type === 'fixed') {
+        valueLabel.textContent = 'Valor de desconto (R$)';
+        valueInput.min = '1';
+        valueInput.max = '';
+        valueInput.step = '0.01';
+        valueInput.placeholder = 'Ex: 250';
+    } else {
+        valueLabel.textContent = 'Percentual de desconto (%)';
+        valueInput.min = '1';
+        valueInput.max = '100';
+        valueInput.step = '1';
+        valueInput.placeholder = 'Ex: 15';
+    }
+}
+
+async function handleCouponSubmit(event) {
+    event.preventDefault();
+
+    const form = event.target;
+    if (!form) {
+        return;
+    }
+
+    const formData = new FormData(form);
+    const code = (formData.get('code') || '').toString().trim().toUpperCase();
+
+    if (!code || code.length < 3) {
+        showError('Informe um código com pelo menos 3 caracteres.');
+        return;
+    }
+
+    const description = (formData.get('description') || '').toString().trim();
+    const discountType = (formData.get('discount_type') || 'percentage').toLowerCase();
+    const rawValue = formData.get('discount_value') || formData.get('value');
+    const discountValue = Number(rawValue);
+
+    if (!Number.isFinite(discountValue) || discountValue <= 0) {
+        showError('Informe um valor de desconto válido.');
+        return;
+    }
+
+    if (discountType === 'percentage' && discountValue > 100) {
+        showError('O percentual máximo de desconto é 100%.');
+        return;
+    }
+
+    const municipioRaw = formData.get('municipio_id') || '';
+    const municipioId = municipioRaw && municipioRaw !== 'all' ? municipioRaw : null;
+
+    const limitRaw = formData.get('max_uses') || '';
+    let maxUses = null;
+    if (limitRaw) {
+        maxUses = parseInt(limitRaw, 10);
+        if (!Number.isFinite(maxUses) || maxUses <= 0) {
+            showError('O limite de usos deve ser um número inteiro positivo.');
+            return;
+        }
+    }
+
+    const validFromRaw = formData.get('valid_from') || '';
+    const validUntilRaw = formData.get('valid_until') || '';
+
+    if (validFromRaw && validUntilRaw) {
+        const fromDate = new Date(`${validFromRaw}T00:00:00`);
+        const untilDate = new Date(`${validUntilRaw}T23:59:59`);
+        if (fromDate > untilDate) {
+            showError('A data final deve ser posterior à data inicial.');
+            return;
+        }
+    }
+
+    const payload = {
+        code,
+        description,
+        discount_type: discountType,
+        discount_value: Number(discountValue.toFixed(2))
+    };
+
+    if (municipioId) {
+        payload.municipio_id = municipioId;
+    }
+    if (validFromRaw) {
+        payload.valid_from = validFromRaw;
+    }
+    if (validUntilRaw) {
+        payload.valid_until = validUntilRaw;
+    }
+    if (maxUses) {
+        payload.max_uses = maxUses;
+    }
+
+    try {
+        showLoading(true);
+        const response = await API.createCupom(payload);
+
+        const createdCoupon = response?.coupon
+            ? normalizeCoupon(response.coupon)
+            : normalizeCoupon(response);
+
+        if (createdCoupon) {
+            couponsData = [createdCoupon, ...couponsData.filter(coupon => coupon.id !== createdCoupon.id)];
+            renderCouponsList();
+        } else {
+            await fetchCouponsAndRender({ skipLoader: true });
+        }
+
+        showSuccess('Cupom criado com sucesso!');
+        closeCouponModal();
+    } catch (error) {
+        console.error('Erro ao criar cupom:', error);
+        showError(error?.message || 'Erro ao criar cupom.');
+    } finally {
+        showLoading(false);
+    }
+}
 
 /**
  * Criar novo município
@@ -1001,9 +3402,9 @@ async function createMunicipioSubmit(event) {
         nome: formData.get('nome'),
         cidade: formData.get('nome'),
         estado: formData.get('estado'),
-        plano: formData.get('plano') || 'standard',
-        max_usuarios: parseInt(formData.get('max_usuarios')) || 20,
-        data_vencimento_licenca: formData.get('data_vencimento') || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+        license_type: 'pending',
+        max_usuarios: 0,
+        data_vencimento_licenca: null,
         status: 'active',
         usuarios_atuais: 0,
         contato_nome: formData.get('contato_nome') || '',
@@ -1108,17 +3509,64 @@ async function loadMunicipioDetails(id) {
     try {
         const response = await API.getMunicipio(id);
         if (response && response.municipio) {
-            return {
+            const municipio = normalizeMunicipioRecord({
                 ...cached,
-                ...response.municipio,
-                statistics: response.statistics || cached?.statistics
+                ...response.municipio
+            }) || {
+                ...cached,
+                ...response.municipio
             };
+            const municipioId = municipio.municipio_id || municipio.id || '';
+            let computedUsers = 0;
+            usuariosData.forEach(user => {
+                const userMunicipio = user.municipio_id || user.municipioId || '';
+                if (userMunicipio === municipioId) {
+                    computedUsers += 1;
+                }
+            });
+
+            const enriched = {
+                ...municipio,
+                statistics: {
+                    ...(cached?.statistics || {}),
+                    ...(response.statistics || {}),
+                    users: usuariosData.length > 0
+                        ? computedUsers
+                        : (response.statistics?.users
+                            ?? cached?.statistics?.users
+                            ?? computedUsers)
+                }
+            };
+            synchronizeMunicipioCache(enriched);
+            return enriched;
         }
     } catch (error) {
         console.warn('Falha ao buscar detalhes completos do município:', error);
     }
 
-    return cached || null;
+    if (cached) {
+        const normalizedCached = normalizeMunicipioRecord(cached) || cached;
+        synchronizeMunicipioCache(normalizedCached);
+        const municipioId = normalizedCached.municipio_id || normalizedCached.id || '';
+        let computedUsers = 0;
+        usuariosData.forEach(user => {
+            const userMunicipio = user.municipio_id || user.municipioId || '';
+            if (userMunicipio === municipioId) {
+                computedUsers += 1;
+            }
+        });
+        return {
+            ...normalizedCached,
+            statistics: {
+                ...(normalizedCached.statistics || {}),
+                users: usuariosData.length > 0
+                    ? computedUsers
+                    : (normalizedCached.statistics?.users ?? computedUsers)
+            }
+        };
+    }
+
+    return null;
 }
 
 function populateViewMunicipioModal(mun) {
@@ -1144,13 +3592,20 @@ function populateViewMunicipioModal(mun) {
 
     const nome = getMunicipioName(mun);
     const status = getMunicipioStatusValue(mun);
+    const municipioId = mun.municipio_id || mun.id || '';
     const maxUsuarios = mun.max_usuarios ?? mun.max_users ?? 0;
-    const usuariosAtuais = mun.usuarios_atuais ?? mun.current_users ?? mun.statistics?.users ?? 0;
+    const usuariosAtuaisCalculated = usuariosData.filter(user => {
+        const userMunicipio = user.municipio_id || user.municipioId || '';
+        return userMunicipio === municipioId;
+    }).length;
+    const usuariosAtuais = usuariosData.length > 0
+        ? usuariosAtuaisCalculated
+        : mun.usuarios_atuais ?? mun.current_users ?? mun.statistics?.users ?? 0;
     const licencaDate = mun.data_vencimento_licenca || mun.license_expires;
 
     if (nomeEl) nomeEl.textContent = nome;
     if (estadoEl) estadoEl.textContent = mun.estado || '-';
-    if (planoEl) planoEl.textContent = formatPlanoLabel(mun.plano || mun.license_type);
+    if (planoEl) planoEl.textContent = formatPlanoLabel(getMunicipioPlanoValue(mun));
     if (usuariosEl) usuariosEl.textContent = `${usuariosAtuais}/${maxUsuarios}`;
     if (licencaEl) licencaEl.textContent = formatDate(licencaDate);
     if (statusEl) statusEl.textContent = status === 'inativo' ? 'Inativo' : 'Ativo';
@@ -1241,10 +3696,17 @@ function populateEditMunicipioForm(mun) {
 
     form.querySelector('[name="nome"]').value = getMunicipioName(mun);
     form.querySelector('[name="estado"]').value = mun.estado || '';
-    form.querySelector('[name="plano"]').value = getMunicipioPlanoValue(mun) || 'standard';
-    form.querySelector('[name="max_usuarios"]').value = mun.max_usuarios ?? mun.max_users ?? 0;
-    form.querySelector('[name="data_vencimento"]').value = formatInputDate(mun.data_vencimento_licenca || mun.license_expires);
-    form.querySelector('[name="status"]').value = getMunicipioStatusValue(mun);
+
+    const planLabelEl = document.getElementById('edit-municipio-plano-label');
+    if (planLabelEl) {
+        planLabelEl.textContent = formatPlanoLabel(getMunicipioPlanoValue(mun));
+    }
+
+    const billingStatusEl = document.getElementById('edit-municipio-billing-status');
+    if (billingStatusEl) {
+        const billingStatus = normalizeValue(mun.billing_status || mun.billing?.status || 'pending');
+        billingStatusEl.textContent = formatPlanoLabel(billingStatus || 'pending');
+    }
 
     const usuariosAtuais = form.querySelector('[name="usuarios_atuais"]');
     if (usuariosAtuais) {
@@ -1295,10 +3757,6 @@ async function updateMunicipioSubmit(event) {
     }
 
     const formData = new FormData(form);
-    const maxUsuarios = parseInt(formData.get('max_usuarios'), 10) || 0;
-    const dataVencimento = formData.get('data_vencimento');
-    const plano = formData.get('plano') || 'standard';
-    const status = formData.get('status') || 'ativo';
     const contactName = formData.get('contato_nome') || '';
     const contactEmail = formData.get('contato_email') || '';
     const contactPhone = formData.get('contato_telefone') || '';
@@ -1307,19 +3765,11 @@ async function updateMunicipioSubmit(event) {
         .split(/[\n,;]+/)
         .map(item => item.trim())
         .filter(Boolean);
-    const statusForApi = status === 'inativo' ? 'inactive' : 'active';
 
     const payload = {
         nome: formData.get('nome'),
         municipio_nome: formData.get('nome'),
         estado: formData.get('estado'),
-        plano,
-        license_type: plano,
-        max_usuarios: maxUsuarios,
-        max_users: maxUsuarios,
-        data_vencimento_licenca: dataVencimento,
-        license_expires: dataVencimento,
-        status: statusForApi,
         contato_nome: contactName,
         contato_email: contactEmail,
         contato_telefone: contactPhone,
@@ -1434,6 +3884,7 @@ function populateEditUsuarioForm(usuario) {
     if (!form) return;
 
     form.dataset.usuarioId = usuario.id;
+    resetEditUserPhotoState(usuario.id, usuario.photo_url || '');
 
     const nameField = form.querySelector('[name="name"]');
     if (nameField) nameField.value = usuario.name || '';
@@ -1509,14 +3960,43 @@ async function updateUsuarioSubmit(event) {
     try {
         showLoading(true);
         await API.updateUsuario(usuarioId, payload);
-        showLoading(false);
+
+        let updatedPhotoUrl = editUserPhotoState.originalUrl || '';
+
+        if (editUserPhotoState.photoToUpload) {
+            const uploadResponse = await API.uploadUserPhoto(usuarioId, editUserPhotoState.photoToUpload);
+            updatedPhotoUrl = uploadResponse?.photo_url || updatedPhotoUrl;
+        } else if (editUserPhotoState.removePhoto) {
+            const deleteResponse = await API.deleteUserPhoto(usuarioId);
+            updatedPhotoUrl = typeof deleteResponse?.photo_url === 'string' ? deleteResponse.photo_url : '';
+        }
+
+        editUserPhotoState.originalUrl = updatedPhotoUrl;
+        editUserPhotoState.photoToUpload = null;
+        editUserPhotoState.removePhoto = false;
+
         showSuccess('Usuário atualizado com sucesso!');
         closeEditUserModal();
         await loadDashboardData();
+
+        if (currentUser && currentUser.id === usuarioId) {
+            setCurrentUserState({
+                id: usuarioId,
+                name: payload.name,
+                phone: payload.phone,
+                cpf: payload.cpf,
+                role: payload.role,
+                status: payload.status,
+                municipio_id: payload.municipio_id,
+                municipio_nome: payload.municipio_nome,
+                photo_url: updatedPhotoUrl
+            });
+        }
     } catch (error) {
-        showLoading(false);
         console.error('Erro ao atualizar usuário:', error);
         showError(`Erro ao atualizar usuário: ${error.message}`);
+    } finally {
+        showLoading(false);
     }
 }
 
@@ -1673,6 +4153,7 @@ function closeEditUserModal() {
         updateUserMunicipioVisibility(form);
     }
     usuarioBeingEdited = null;
+    resetEditUserPhotoState(null, '');
     const auditEl = document.getElementById('edit-user-audit');
     if (auditEl) auditEl.textContent = '';
 }
@@ -2068,6 +4549,110 @@ function handleProfilePhotoRemove() {
     setProfilePhotoPreview('');
 }
 
+function resetEditUserPhotoState(usuarioId, currentUrl) {
+    editUserPhotoState.usuarioId = usuarioId || null;
+    editUserPhotoState.originalUrl = currentUrl || '';
+    editUserPhotoState.preview = currentUrl || '';
+    editUserPhotoState.photoToUpload = null;
+    editUserPhotoState.removePhoto = false;
+    setEditUserPhotoPreview(currentUrl || '');
+    const input = document.getElementById('edit-user-photo-input');
+    if (input) {
+        input.value = '';
+    }
+}
+
+function setEditUserPhotoPreview(url) {
+    const previewImg = document.getElementById('edit-user-photo-preview');
+    const placeholder = document.getElementById('edit-user-photo-placeholder');
+    const removeBtn = document.getElementById('edit-user-photo-remove-btn');
+
+    editUserPhotoState.preview = url || '';
+
+    if (previewImg && placeholder) {
+        if (url) {
+            previewImg.src = url;
+            previewImg.classList.remove('hidden');
+            placeholder.classList.add('hidden');
+        } else {
+            previewImg.src = '';
+            previewImg.classList.add('hidden');
+            placeholder.classList.remove('hidden');
+        }
+    }
+
+    if (removeBtn) {
+        const hasPhoto = Boolean(url) || Boolean(editUserPhotoState.originalUrl);
+        removeBtn.disabled = !hasPhoto;
+        removeBtn.classList.toggle('opacity-50', !hasPhoto);
+    }
+}
+
+function handleEditUserPhotoSelection(event) {
+    const file = event?.target?.files && event.target.files[0];
+    if (!file) {
+        return;
+    }
+
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+        showError('Formato de imagem não suportado. Utilize JPG, PNG ou WEBP.');
+        event.target.value = '';
+        return;
+    }
+
+    if (file.size > 4 * 1024 * 1024) {
+        showError('A imagem deve ter até 4MB.');
+        event.target.value = '';
+        return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+        editUserPhotoState.photoToUpload = reader.result;
+        editUserPhotoState.removePhoto = false;
+        setEditUserPhotoPreview(editUserPhotoState.photoToUpload);
+    };
+    reader.onerror = () => {
+        showError('Não foi possível ler o arquivo selecionado.');
+        event.target.value = '';
+    };
+    reader.readAsDataURL(file);
+}
+
+function handleEditUserPhotoRemove() {
+    const fileInput = document.getElementById('edit-user-photo-input');
+    if (fileInput) {
+        fileInput.value = '';
+    }
+
+    const hasNewPhoto = Boolean(editUserPhotoState.photoToUpload);
+    const hasStoredPhoto = Boolean(editUserPhotoState.originalUrl);
+
+    if (hasNewPhoto) {
+        editUserPhotoState.photoToUpload = null;
+        editUserPhotoState.removePhoto = false;
+        setEditUserPhotoPreview(editUserPhotoState.originalUrl || '');
+        return;
+    }
+
+    if (editUserPhotoState.removePhoto && hasStoredPhoto) {
+        editUserPhotoState.removePhoto = false;
+        setEditUserPhotoPreview(editUserPhotoState.originalUrl);
+        return;
+    }
+
+    if (hasStoredPhoto) {
+        editUserPhotoState.removePhoto = true;
+        setEditUserPhotoPreview('');
+        return;
+    }
+
+    editUserPhotoState.photoToUpload = null;
+    editUserPhotoState.removePhoto = false;
+    setEditUserPhotoPreview('');
+}
+
 async function handleProfileFormSubmit(event) {
     event.preventDefault();
 
@@ -2430,13 +5015,20 @@ if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') 
 
 document.addEventListener('DOMContentLoaded', () => {
     // Navigation
-    document.querySelectorAll('.nav-item').forEach(item => {
-        item.addEventListener('click', event => {
-            event.preventDefault();
-            const target = (item.getAttribute('href') || '#dashboard').replace('#', '') || 'dashboard';
-            switchSection(target);
-        });
+    document.addEventListener('click', event => {
+        const navLink = event.target.closest('[data-section-target]');
+        if (!navLink) {
+            return;
+        }
+
+        event.preventDefault();
+        const target = navLink.dataset.sectionTarget
+            || (navLink.getAttribute('href') || '#dashboard').replace('#', '')
+            || 'dashboard';
+        switchSection(target);
     });
+
+    setupReportsControls();
 
     const profileOpenBtn = document.getElementById('config-profile-open');
     if (profileOpenBtn) {
@@ -2480,6 +5072,23 @@ document.addEventListener('DOMContentLoaded', () => {
     if (profilePhotoRemoveBtn) {
         profilePhotoRemoveBtn.addEventListener('click', handleProfilePhotoRemove);
     }
+
+    const editUserPhotoUploadBtn = document.getElementById('edit-user-photo-upload-btn');
+    const editUserPhotoInput = document.getElementById('edit-user-photo-input');
+    if (editUserPhotoUploadBtn && editUserPhotoInput) {
+        editUserPhotoUploadBtn.addEventListener('click', () => {
+            editUserPhotoInput.click();
+        });
+    }
+
+    if (editUserPhotoInput) {
+        editUserPhotoInput.addEventListener('change', handleEditUserPhotoSelection);
+    }
+
+    const editUserPhotoRemoveBtn = document.getElementById('edit-user-photo-remove-btn');
+    if (editUserPhotoRemoveBtn) {
+        editUserPhotoRemoveBtn.addEventListener('click', handleEditUserPhotoRemove);
+    }
     
     // Conectar form de criar município
     const createForm = document.querySelector('#createModal form');
@@ -2487,9 +5096,66 @@ document.addEventListener('DOMContentLoaded', () => {
         createForm.addEventListener('submit', createMunicipioSubmit);
     }
 
+    const couponOpenBtn = document.getElementById('coupon-create-open');
+    if (couponOpenBtn) {
+        couponOpenBtn.addEventListener('click', () => {
+            openCouponModal();
+        });
+    }
+
+    const couponCloseBtn = document.getElementById('coupon-close-btn');
+    if (couponCloseBtn) {
+        couponCloseBtn.addEventListener('click', () => {
+            closeCouponModal();
+        });
+    }
+
+    const couponCancelBtn = document.getElementById('coupon-cancel-btn');
+    if (couponCancelBtn) {
+        couponCancelBtn.addEventListener('click', event => {
+            event.preventDefault();
+            closeCouponModal();
+        });
+    }
+
+    const couponForm = document.getElementById('coupon-create-form');
+    if (couponForm) {
+        couponForm.addEventListener('submit', handleCouponSubmit);
+    }
+
+    const couponTypeSelect = document.getElementById('coupon-discount-type');
+    if (couponTypeSelect) {
+        couponTypeSelect.addEventListener('change', updateCouponDiscountInputs);
+    }
+
+    const couponCodeInput = document.getElementById('coupon-code');
+    if (couponCodeInput) {
+        couponCodeInput.addEventListener('input', event => {
+            event.target.value = event.target.value.toUpperCase();
+        });
+    }
+
     const editForm = document.getElementById('editMunicipioForm');
     if (editForm) {
         editForm.addEventListener('submit', updateMunicipioSubmit);
+    }
+
+    const billingForm = document.getElementById('billing-config-form');
+    if (billingForm) {
+        billingForm.addEventListener('submit', submitBillingConfig);
+    }
+
+    const billingSelect = document.getElementById('billing-municipio-select');
+    if (billingSelect) {
+        billingSelect.addEventListener('change', handleBillingMunicipioChange);
+    }
+
+    const billingRefreshBtn = document.getElementById('billing-refresh');
+    if (billingRefreshBtn) {
+        billingRefreshBtn.addEventListener('click', event => {
+            event.preventDefault();
+            refreshBillingData();
+        });
     }
 
     const confirmDeleteBtn = document.getElementById('confirmDeleteMunicipioBtn');
@@ -2635,11 +5301,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    const faturamentoDetailsBtn = document.getElementById('open-faturamento-details');
+    if (faturamentoDetailsBtn) {
+        faturamentoDetailsBtn.addEventListener('click', () => {
+            switchSection('faturamento');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+    }
+
     syncMunicipioFilterControls();
     syncUsuarioFilterControls();
     syncConfigThemeToggle();
     refreshHeaderUser();
     updateConfigSummary();
+
+    resetBillingSummary();
+    setBillingFormDisabled(true);
 
     switchSection('dashboard');
     

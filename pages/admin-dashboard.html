@@ -4,6 +4,8 @@
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Dashboard Administrativo - Ciclo Integrado</title>
+    <link rel="icon" type="image/x-icon" href="/favicon.ico"/>
+    <link rel="icon" type="image/png" href="../assets/images/so_logo.png"/>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
@@ -69,6 +71,19 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        select:not([multiple]) {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            padding-right: 2.5rem;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%2364748B' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1rem;
+        }
+        .dark select:not([multiple]) {
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23E2E8F0' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+        }
     </style>
 </head>
 <body class="font-display bg-background-light dark:bg-background-dark text-text-primary dark:text-gray-100">
@@ -89,27 +104,27 @@
 
                 <!-- Navigation -->
                 <nav class="flex flex-col gap-2">
-                    <a href="#dashboard" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary">
+                    <a href="#dashboard" data-section-target="dashboard" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary">
                         <span class="material-symbols-outlined">dashboard</span>
                         <p class="text-sm font-medium">Dashboard Administrativo</p>
                     </a>
-                    <a href="#municipios" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <a href="#municipios" data-section-target="municipios" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
                         <span class="material-symbols-outlined">apartment</span>
                         <p class="text-sm font-medium">Municípios</p>
                     </a>
-                    <a href="#usuarios" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <a href="#usuarios" data-section-target="usuarios" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
                         <span class="material-symbols-outlined">group</span>
                         <p class="text-sm font-medium">Usuários</p>
                     </a>
-                    <a href="#faturamento" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <a href="#faturamento" data-section-target="faturamento" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
                         <span class="material-symbols-outlined">payments</span>
                         <p class="text-sm font-medium">Faturamento</p>
                     </a>
-                    <a href="#relatorios" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <a href="#relatorios" data-section-target="relatorios" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
                         <span class="material-symbols-outlined">analytics</span>
                         <p class="text-sm font-medium">Relatórios</p>
                     </a>
-                    <a href="#configuracoes" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
+                    <a href="#configuracoes" data-section-target="configuracoes" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
                         <span class="material-symbols-outlined">settings</span>
                         <p class="text-sm font-medium">Configurações</p>
                     </a>
@@ -149,7 +164,7 @@
                         </div>
                         <div class="text-right">
                             <p id="header-user-name" class="text-sm font-medium">Admin Master</p>
-                            <p id="header-user-email" class="text-xs text-text-secondary dark:text-gray-400">admin@ciclo.com</p>
+                            <p id="header-user-email" class="text-xs text-text-secondary dark:text-gray-400">admin@ciclointegrado.online</p>
                         </div>
                     </div>
                 </div>
@@ -234,7 +249,7 @@
                                 <h3 class="text-lg font-semibold">Receita Mensal</h3>
                                 <p class="text-sm text-text-secondary dark:text-gray-400">Últimos 6 meses</p>
                             </div>
-                            <button class="px-3 py-1.5 text-xs font-medium text-primary border border-primary rounded-lg hover:bg-primary/5">
+                            <button id="open-faturamento-details" type="button" class="px-3 py-1.5 text-xs font-medium text-primary border border-primary rounded-lg hover:bg-primary/5">
                                 Ver detalhes
                             </button>
                         </div>
@@ -330,6 +345,7 @@
                                 <label for="municipio-filter-plano" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Plano</label>
                                 <select id="municipio-filter-plano" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
                                     <option value="all">Todos os planos</option>
+                                    <option value="pending">Pendentes</option>
                                     <option value="standard">Standard</option>
                                     <option value="profissional">Profissional</option>
                                     <option value="premium">Premium</option>
@@ -774,19 +790,367 @@
                     </div>
                 </section>
 
-                <section id="section-faturamento" class="hidden">
-                    <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-8 text-center text-text-secondary dark:text-gray-400">
-                        <span class="material-symbols-outlined text-4xl mb-3 text-text-secondary/70 dark:text-gray-500">bar_chart</span>
-                        <h3 class="text-lg font-semibold mb-2">Módulo de Faturamento</h3>
-                        <p>Em breve você poderá acompanhar relatórios financeiros e projeções detalhadas aqui.</p>
+                <section id="section-faturamento" class="space-y-6 hidden">
+                    <div class="grid gap-6 sm:grid-cols-2 xl:grid-cols-4">
+                        <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <p class="text-sm text-text-secondary dark:text-gray-400">Receita mensal atual</p>
+                                    <h3 id="faturamento-mensal-total" class="text-2xl font-semibold mt-2">R$ 0,00</h3>
+                                </div>
+                                <span class="material-symbols-outlined text-primary">payments</span>
+                            </div>
+                            <p id="faturamento-mensal-variacao" class="mt-4 text-sm font-medium text-text-secondary dark:text-gray-400 transition-colors">Sem histórico anterior</p>
+                        </div>
+
+                        <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <p class="text-sm text-text-secondary dark:text-gray-400">Projeção anual</p>
+                                    <h3 id="faturamento-anual-projetada" class="text-2xl font-semibold mt-2">R$ 0,00</h3>
+                                </div>
+                                <span class="material-symbols-outlined text-purple-500">trending_up</span>
+                            </div>
+                            <p class="mt-4 text-sm text-text-secondary dark:text-gray-400">Cálculo automático com base nos contratos ativos</p>
+                        </div>
+
+                        <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <p class="text-sm text-text-secondary dark:text-gray-400">Ticket médio por município</p>
+                                    <h3 id="faturamento-ticket-medio" class="text-2xl font-semibold mt-2">R$ 0,00</h3>
+                                </div>
+                                <span class="material-symbols-outlined text-emerald-500">request_quote</span>
+                            </div>
+                            <p class="mt-4 text-sm text-text-secondary dark:text-gray-400">Baseado na receita recorrente e municípios ativos</p>
+                        </div>
+
+                        <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6">
+                            <div class="flex items-start justify-between">
+                                <div>
+                                    <p class="text-sm text-text-secondary dark:text-gray-400">Base ativa</p>
+                                    <h3 id="faturamento-municipios-ativos" class="text-2xl font-semibold mt-2">0 municípios</h3>
+                                </div>
+                                <span class="material-symbols-outlined text-blue-500">location_city</span>
+                            </div>
+                            <p class="mt-4 text-sm text-text-secondary dark:text-gray-400">Municípios com licenças vigentes na plataforma</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6">
+                        <form id="billing-config-form" class="space-y-6">
+                            <div class="flex flex-col gap-2 md:flex-row md:items-start md:justify-between">
+                                <div>
+                                    <h3 class="text-lg font-semibold">Configurar faturamento do município</h3>
+                                    <p class="text-sm text-text-secondary dark:text-gray-400">Selecione um município para ajustar plano, limites e vigência da licença.</p>
+                                </div>
+                                <div class="flex gap-2">
+                                    <button id="billing-refresh" type="button" class="px-4 py-2 border border-border-light dark:border-border-dark rounded-lg text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-700">Atualizar dados</button>
+                                    <button type="submit" class="px-4 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-primary/90">Salvar configuração</button>
+                                </div>
+                            </div>
+
+                            <div class="grid gap-4 md:grid-cols-2">
+                                <div>
+                                    <label for="billing-municipio-select" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Município</label>
+                                    <select id="billing-municipio-select" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                                        <option value="">Selecione o município</option>
+                                    </select>
+                                </div>
+                                <div class="rounded-lg border border-dashed border-border-light dark:border-border-dark bg-gray-50/60 dark:bg-gray-800/40 p-4 text-xs text-text-secondary dark:text-gray-400">
+                                    <p><span class="font-semibold text-text-primary dark:text-gray-100">Resumo atual:</span></p>
+                                    <p id="billing-summary-plan">Plano: não definido</p>
+                                    <p id="billing-summary-status">Status do faturamento: pendente</p>
+                                    <p id="billing-summary-license">Licença válida até: -</p>
+                                </div>
+                            </div>
+
+                            <div class="grid gap-4 lg:grid-cols-4">
+                                <div class="lg:col-span-2">
+                                    <label for="billing-plan-type" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Plano</label>
+                                    <select id="billing-plan-type" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" required>
+                                        <option value="">Selecione o plano</option>
+                                        <option value="standard">Standard</option>
+                                        <option value="profissional">Profissional</option>
+                                        <option value="premium">Premium</option>
+                                        <option value="custom">Personalizado</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="billing-status" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Status</label>
+                                    <select id="billing-status" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                                        <option value="pending">Pendente</option>
+                                        <option value="active">Ativo</option>
+                                        <option value="paused">Pausado</option>
+                                        <option value="inactive">Inativo</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="billing-max-users" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Máx. de usuários</label>
+                                    <input id="billing-max-users" type="number" min="0" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="0" />
+                                </div>
+                            </div>
+
+                            <div class="grid gap-4 lg:grid-cols-4">
+                                <div>
+                                    <label for="billing-monthly-value" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Valor mensal (R$)</label>
+                                    <input id="billing-monthly-value" type="number" min="0" step="0.01" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="0,00" />
+                                </div>
+                                <div>
+                                    <label for="billing-payment-day" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Dia de cobrança</label>
+                                    <input id="billing-payment-day" type="number" min="1" max="31" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="1" />
+                                </div>
+                                <div>
+                                    <label for="billing-installments" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Parcelas</label>
+                                    <input id="billing-installments" type="number" min="0" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="0" />
+                                </div>
+                                <div>
+                                    <label for="billing-license-expires" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Licença válida até</label>
+                                    <input id="billing-license-expires" type="date" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" />
+                                </div>
+                            </div>
+
+                            <div class="grid gap-4 lg:grid-cols-2">
+                                <div>
+                                    <label for="billing-notes" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Observações internas</label>
+                                    <textarea id="billing-notes" rows="3" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Anotações sobre condições acordadas, promoções ou renegociações"></textarea>
+                                </div>
+                                <div class="rounded-lg border border-border-light dark:border-border-dark bg-gray-50/60 dark:bg-gray-800/40 p-4 text-xs text-text-secondary dark:text-gray-400 space-y-2">
+                                    <p class="font-semibold text-text-primary dark:text-gray-100">Informações complementares</p>
+                                    <p id="billing-summary-effective">Valor efetivo registrado: R$ 0,00</p>
+                                    <p id="billing-summary-coupon">Cupom aplicado: nenhum</p>
+                                    <p id="billing-summary-updated">Última atualização: -</p>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col gap-2 text-xs text-text-secondary dark:text-gray-400">
+                                <p>Campos não informados permanecerão com os valores atuais. Utilize esta área para centralizar limites, vigência e condições financeiras dos municípios.</p>
+                                <p class="font-medium text-primary">Alterações salvas atualizam imediatamente os painéis de faturamento e os relatórios financeiros.</p>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="grid gap-6 xl:grid-cols-3">
+                        <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6 xl:col-span-2">
+                            <div class="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 class="text-lg font-semibold">Histórico de receita</h3>
+                                    <p class="text-sm text-text-secondary dark:text-gray-400">Evolução mensal com indicadores de crescimento</p>
+                                </div>
+                            </div>
+                            <div id="faturamento-historico-list" class="space-y-4 text-sm text-text-secondary dark:text-gray-400">
+                                Carregando dados financeiros...
+                            </div>
+                        </div>
+
+                        <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 class="text-lg font-semibold">Receita por plano</h3>
+                                    <p class="text-sm text-text-secondary dark:text-gray-400">Participação por faixa de licenciamento</p>
+                                </div>
+                            </div>
+                            <div id="faturamento-planos-list" class="space-y-4 text-sm text-text-secondary dark:text-gray-400">
+                                Nenhum plano encontrado.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid gap-6 lg:grid-cols-2">
+                        <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 class="text-lg font-semibold">Projeção de receita</h3>
+                                    <p class="text-sm text-text-secondary dark:text-gray-400">Estimativa baseada na tendência recente</p>
+                                </div>
+                            </div>
+                            <div id="faturamento-projecoes" class="space-y-3 text-sm text-text-secondary dark:text-gray-400">
+                                Projeções disponíveis após registrar pelo menos dois meses de receita.
+                            </div>
+                        </div>
+
+                        <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6">
+                            <div class="flex items-center justify-between mb-6">
+                                <div>
+                                    <h3 class="text-lg font-semibold">Alertas financeiros</h3>
+                                    <p class="text-sm text-text-secondary dark:text-gray-400">Monitoramento automático de tendências</p>
+                                </div>
+                            </div>
+                            <div id="faturamento-alertas" class="space-y-3 text-sm text-text-secondary dark:text-gray-400">
+                                Nenhum alerta gerado até o momento.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6">
+                        <div class="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                            <div>
+                                <h3 class="text-lg font-semibold">Cupons de desconto</h3>
+                                <p class="text-sm text-text-secondary dark:text-gray-400">Ofereça vantagens personalizadas para municípios selecionados.</p>
+                                <p id="coupons-summary" class="text-xs text-text-secondary/80 dark:text-gray-400 mt-2">Nenhum cupom cadastrado no momento.</p>
+                            </div>
+                            <button id="coupon-create-open" type="button" class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90">
+                                <span class="material-symbols-outlined text-base">add</span>
+                                Novo cupom
+                            </button>
+                        </div>
+                        <div id="coupons-empty-state" class="mt-6 rounded-xl border border-dashed border-border-light dark:border-border-dark bg-gray-50/60 dark:bg-gray-800/40">
+                            <div class="flex flex-col items-center justify-center gap-2 py-10 text-center text-sm text-text-secondary dark:text-gray-400">
+                                <span class="material-symbols-outlined text-3xl text-text-secondary/60 dark:text-gray-500">local_offer</span>
+                                <p>Nenhum cupom cadastrado ainda. Crie o primeiro cupom para incentivar renovações ou ofertas sazonais.</p>
+                            </div>
+                        </div>
+                        <div id="coupons-list" class="mt-6 space-y-4"></div>
                     </div>
                 </section>
 
-                <section id="section-relatorios" class="hidden">
-                    <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-8 text-center text-text-secondary dark:text-gray-400">
-                        <span class="material-symbols-outlined text-4xl mb-3 text-text-secondary/70 dark:text-gray-500">analytics</span>
-                        <h3 class="text-lg font-semibold mb-2">Central de Relatórios</h3>
-                        <p>Este módulo está em construção. Relatórios personalizados estarão disponíveis em breve.</p>
+                <section id="section-relatorios" class="space-y-6 hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+                        <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6 flex flex-col gap-3">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-text-secondary dark:text-gray-400">Licenças a vencer</p>
+                                    <h3 id="reports-expiring-total" class="text-3xl font-bold text-text-primary dark:text-gray-100 mt-1">0</h3>
+                                </div>
+                                <span class="material-symbols-outlined text-3xl text-primary">calendar_month</span>
+                            </div>
+                            <p id="reports-expiring-range-label" class="text-xs text-text-secondary dark:text-gray-400">Monitorando próximos 30 dias</p>
+                        </div>
+
+                        <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6 flex flex-col gap-3">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-text-secondary dark:text-gray-400">Próxima expiração</p>
+                                    <h3 id="reports-next-expiration-value" class="text-3xl font-bold text-text-primary dark:text-gray-100 mt-1">-</h3>
+                                </div>
+                                <span class="material-symbols-outlined text-3xl text-amber-500">event_upcoming</span>
+                            </div>
+                            <p id="reports-next-expiration-municipio" class="text-xs text-text-secondary dark:text-gray-400">Nenhuma licença vencendo no período monitorado.</p>
+                        </div>
+
+                        <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6 flex flex-col gap-3">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-text-secondary dark:text-gray-400">Uso crítico de usuários</p>
+                                    <h3 id="reports-critical-count" class="text-3xl font-bold text-text-primary dark:text-gray-100 mt-1">0</h3>
+                                </div>
+                                <span class="material-symbols-outlined text-3xl text-amber-500">warning</span>
+                            </div>
+                            <p id="reports-critical-summary" class="text-xs text-text-secondary dark:text-gray-400">Ocupação ≥ 90% do limite contratado</p>
+                            <p class="text-xs text-text-secondary dark:text-gray-400">
+                                Monitorando <span id="reports-total-monitored" class="font-semibold">0</span> municípios
+                            </p>
+                            <p id="reports-total-monitored-subtitle" class="text-[11px] text-text-secondary/80 dark:text-gray-500">Dados consolidados dos municípios</p>
+                        </div>
+
+                        <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6 flex flex-col gap-3">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm text-text-secondary dark:text-gray-400">Uso médio</p>
+                                    <h3 id="reports-average-usage" class="text-3xl font-bold text-text-primary dark:text-gray-100 mt-1">-</h3>
+                                </div>
+                                <span class="material-symbols-outlined text-3xl text-emerald-500">trending_up</span>
+                            </div>
+                            <p id="reports-average-usage-subtitle" class="text-xs text-text-secondary dark:text-gray-400">Sem limites de usuários configurados</p>
+                        </div>
+                    </div>
+
+                    <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm">
+                        <div class="p-6 border-b border-border-light dark:border-border-dark flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                            <div>
+                                <h3 class="text-lg font-semibold">Licenças com vencimento próximo</h3>
+                                <p id="reports-expiring-summary" class="text-sm text-text-secondary dark:text-gray-400">Carregando dados...</p>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <select id="reports-expiry-range" class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 text-sm">
+                                    <option value="7">Próximos 7 dias</option>
+                                    <option value="15">Próximos 15 dias</option>
+                                    <option value="30" selected>Próximos 30 dias</option>
+                                    <option value="45">Próximos 45 dias</option>
+                                    <option value="60">Próximos 60 dias</option>
+                                    <option value="90">Próximos 90 dias</option>
+                                </select>
+                                <button id="reports-expiry-refresh" type="button" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-medium">Atualizar</button>
+                            </div>
+                        </div>
+                        <div class="px-6 py-3">
+                            <div id="reports-expiring-loading" class="flex items-center gap-2 text-sm text-text-secondary dark:text-gray-400 hidden">
+                                <span class="material-symbols-outlined animate-spin">progress_activity</span>
+                                <span>Atualizando dados...</span>
+                            </div>
+                            <p id="reports-expiring-empty" class="text-sm text-text-secondary dark:text-gray-400 hidden">Nenhuma licença vence no período monitorado.</p>
+                        </div>
+                        <div class="overflow-x-auto" id="reports-expiring-table-wrapper">
+                            <table class="min-w-full divide-y divide-border-light dark:divide-border-dark">
+                                <thead class="bg-gray-50 dark:bg-gray-800/60">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-text-secondary dark:text-gray-400 uppercase tracking-wider">Município</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-text-secondary dark:text-gray-400 uppercase tracking-wider">Plano</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-text-secondary dark:text-gray-400 uppercase tracking-wider">Vencimento</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-text-secondary dark:text-gray-400 uppercase tracking-wider">Dias restantes</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reports-expiring-table" class="bg-white dark:bg-card-dark divide-y divide-border-light/70 dark:divide-border-dark/70">
+                                    <tr>
+                                        <td colspan="4" class="px-6 py-6 text-center text-sm text-text-secondary dark:text-gray-400">Carregando relatórios...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm">
+                        <div class="p-6 border-b border-border-light dark:border-border-dark flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                            <div>
+                                <h3 class="text-lg font-semibold">Capacidade dos municípios</h3>
+                                <p id="reports-capacity-summary" class="text-sm text-text-secondary dark:text-gray-400">Carregando dados...</p>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-2">
+                                <select id="reports-capacity-plan" class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 text-sm">
+                                    <option value="all">Todos os planos</option>
+                                    <option value="premium">Premium</option>
+                                    <option value="profissional">Profissional</option>
+                                    <option value="standard">Standard</option>
+                                    <option value="pending">Pendentes</option>
+                                </select>
+                                <select id="reports-capacity-status" class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 text-sm">
+                                    <option value="all">Todos os status</option>
+                                    <option value="ativo">Ativos</option>
+                                    <option value="pendente">Pendentes</option>
+                                    <option value="inativo">Inativos</option>
+                                </select>
+                                <label class="inline-flex items-center gap-2 text-sm text-text-secondary dark:text-gray-400">
+                                    <input id="reports-capacity-only-critical" type="checkbox" class="rounded border-border-light dark:border-border-dark" />
+                                    Apenas críticos
+                                </label>
+                                <button id="reports-capacity-refresh" type="button" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-medium">Atualizar</button>
+                            </div>
+                        </div>
+                        <div class="px-6 py-3">
+                            <div id="reports-capacity-loading" class="flex items-center gap-2 text-sm text-text-secondary dark:text-gray-400 hidden">
+                                <span class="material-symbols-outlined animate-spin">progress_activity</span>
+                                <span>Atualizando dados...</span>
+                            </div>
+                            <p id="reports-capacity-empty" class="text-sm text-text-secondary dark:text-gray-400 hidden">Nenhum município atende aos filtros selecionados.</p>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full divide-y divide-border-light dark:divide-border-dark">
+                                <thead class="bg-gray-50 dark:bg-gray-800/60">
+                                    <tr>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-text-secondary dark:text-gray-400 uppercase tracking-wider">Município</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-text-secondary dark:text-gray-400 uppercase tracking-wider">Plano</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-text-secondary dark:text-gray-400 uppercase tracking-wider">Usuários</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-text-secondary dark:text-gray-400 uppercase tracking-wider">Licença</th>
+                                        <th class="px-6 py-3 text-left text-xs font-medium text-text-secondary dark:text-gray-400 uppercase tracking-wider">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="reports-capacity-table" class="bg-white dark:bg-card-dark divide-y divide-border-light/70 dark:divide-border-dark/70">
+                                    <tr>
+                                        <td colspan="5" class="px-6 py-6 text-center text-sm text-text-secondary dark:text-gray-400">Carregando relatórios...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </section>
 
@@ -958,41 +1322,14 @@
                         </select>
                     </div>
                 </div>
-                <div>
-                    <label class="block text-sm font-medium mb-2">Plano</label>
-                    <div class="grid grid-cols-3 gap-3">
-                        <label class="flex items-center p-4 border-2 border-border-light dark:border-border-dark rounded-lg cursor-pointer hover:border-primary">
-                            <input type="radio" name="plano" value="standard" checked class="mr-3">
-                            <div>
-                                <p class="font-medium">Standard</p>
-                                <p class="text-xs text-text-secondary dark:text-gray-400">R$ 500/mês</p>
-                            </div>
-                        </label>
-                        <label class="flex items-center p-4 border-2 border-border-light dark:border-border-dark rounded-lg cursor-pointer hover:border-primary">
-                            <input type="radio" name="plano" value="profissional" class="mr-3">
-                            <div>
-                                <p class="font-medium">Profissional</p>
-                                <p class="text-xs text-text-secondary dark:text-gray-400">R$ 1.250/mês</p>
-                            </div>
-                        </label>
-                        <label class="flex items-center p-4 border-2 border-border-light dark:border-border-dark rounded-lg cursor-pointer hover:border-primary">
-                            <input type="radio" name="plano" value="premium" class="mr-3">
-                            <div>
-                                <p class="font-medium">Premium</p>
-                                <p class="text-xs text-text-secondary dark:text-gray-400">R$ 2.500/mês</p>
-                            </div>
-                        </label>
+                <div class="rounded-lg border border-dashed border-border-light dark:border-border-dark bg-gray-50/60 dark:bg-gray-800/40 p-4 text-sm text-text-secondary dark:text-gray-400">
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-outlined text-primary">info</span>
+                        <p>Os detalhes de faturamento (plano, valores, parcelas e cupons) serão definidos posteriormente na aba <strong>Faturamento</strong>. Aqui cadastre apenas as informações básicas do município.</p>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Máximo de Usuários</label>
-                        <input type="number" name="max_usuarios" value="20" required min="1" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Ex: 50">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Licença Válida Até</label>
-                        <input type="date" name="data_vencimento" required class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
-                    </div>
+                <div class="rounded-lg border border-dashed border-border-light dark:border-border-dark bg-gray-50/60 dark:bg-gray-800/40 p-4 text-xs text-text-secondary dark:text-gray-400">
+                    <p>Limites de usuários, data de validade da licença e status operacional agora são definidos na aba <strong>Faturamento</strong>. Após criar o município, acesse o menu para concluir a configuração financeira.</p>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -1021,6 +1358,76 @@
                 <div class="flex gap-3 pt-4">
                     <button type="button" onclick="closeCreateModal()" class="flex-1 px-4 py-2 border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">Cancelar</button>
                     <button type="submit" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 font-medium">Criar Município</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal: Create Coupon -->
+    <div id="couponModal" class="hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-card-light dark:bg-card-dark rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div class="p-6 border-b border-border-light dark:border-border-dark flex items-center justify-between">
+                <div>
+                    <h3 class="text-xl font-semibold">Novo cupom de desconto</h3>
+                    <p class="text-sm text-text-secondary dark:text-gray-400">Defina o código, o tipo de desconto e a abrangência.</p>
+                </div>
+                <button id="coupon-close-btn" type="button" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
+                    <span class="material-symbols-outlined text-text-secondary dark:text-gray-400">close</span>
+                </button>
+            </div>
+            <form id="coupon-create-form" class="p-6 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label for="coupon-code" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Código do cupom</label>
+                        <input id="coupon-code" name="code" type="text" required maxlength="40" class="uppercase tracking-[0.08em] w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="EX: PREF2025" />
+                    </div>
+                    <div>
+                        <label for="coupon-discount-type" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Tipo de desconto</label>
+                        <select id="coupon-discount-type" name="discount_type" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="percentage">Percentual (%)</option>
+                            <option value="fixed">Valor (R$)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label id="coupon-value-label" for="coupon-value" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Percentual de desconto (%)</label>
+                        <input id="coupon-value" name="discount_value" type="number" min="1" max="100" step="1" required class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Ex: 15" />
+                    </div>
+                    <div>
+                        <label for="coupon-municipio-id" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Aplicável a</label>
+                        <select id="coupon-municipio-id" name="municipio_id" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
+                            <option value="">Todos os municípios</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <label for="coupon-description" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Descrição (opcional)</label>
+                    <textarea id="coupon-description" name="description" rows="3" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Ex: Desconto de lançamento para novos contratos."></textarea>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                        <label for="coupon-max-uses" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Limite de usos</label>
+                        <input id="coupon-max-uses" name="max_uses" type="number" min="1" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" placeholder="Opcional" />
+                    </div>
+                    <div>
+                        <label for="coupon-valid-from" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Válido a partir de</label>
+                        <input id="coupon-valid-from" name="valid_from" type="date" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" />
+                    </div>
+                    <div>
+                        <label for="coupon-valid-until" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Válido até</label>
+                        <input id="coupon-valid-until" name="valid_until" type="date" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" />
+                    </div>
+                </div>
+                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border border-dashed border-border-light dark:border-border-dark rounded-lg px-4 py-3 bg-gray-50/60 dark:bg-gray-800/40 text-xs text-text-secondary dark:text-gray-400">
+                    <div class="flex items-start gap-2">
+                        <span class="material-symbols-outlined text-base text-primary">info</span>
+                        <p>Deixe as datas em branco para um cupom disponível imediatamente e sem data de expiração. Defina limite de usos para controlar quantas ativações são permitidas.</p>
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-2">
+                    <button id="coupon-cancel-btn" type="button" class="flex-1 px-4 py-2 border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700">Cancelar</button>
+                    <button type="submit" class="flex-1 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 font-medium">Salvar cupom</button>
                 </div>
             </form>
         </div>
@@ -1169,33 +1576,19 @@
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Plano</label>
-                        <select name="plano" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
-                            <option value="standard">Standard</option>
-                            <option value="profissional">Profissional</option>
-                            <option value="premium">Premium</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Status</label>
-                        <select name="status" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary">
-                            <option value="ativo">Ativo</option>
-                            <option value="inativo">Inativo</option>
-                        </select>
+                <div class="rounded-lg border border-dashed border-border-light dark:border-border-dark bg-gray-50/60 dark:bg-gray-800/40 p-4 text-sm text-text-secondary dark:text-gray-400">
+                    <div class="flex items-start gap-3">
+                        <span class="material-symbols-outlined text-primary">payments</span>
+                        <div class="space-y-1">
+                            <p class="text-text-primary dark:text-gray-200"><span class="font-medium">Plano atual:</span> <span id="edit-municipio-plano-label">Pendente</span></p>
+                            <p class="text-xs">Status do faturamento: <span id="edit-municipio-billing-status">Pendência</span></p>
+                            <p class="text-xs">Limite de usuários, validade da licença e plano são editados diretamente na aba <strong>Faturamento</strong>.</p>
+                        </div>
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Máximo de Usuários</label>
-                        <input type="number" name="max_usuarios" min="1" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium mb-2">Licença Válida Até</label>
-                        <input type="date" name="data_vencimento" class="w-full px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" />
-                    </div>
+                <div class="rounded-lg border border-dashed border-border-light dark:border-border-dark bg-gray-50/60 dark:bg-gray-800/40 p-4 text-xs text-text-secondary dark:text-gray-400">
+                    <p>Este cadastro mantém somente os dados administrativos (contatos, observações e documentos). Licenciamento, status operacional, limites e cobrança permanecem centralizados em <strong>Faturamento</strong>.</p>
                 </div>
 
                 <div>
@@ -1333,6 +1726,26 @@
                 </button>
             </div>
             <form id="editUserForm" class="p-6 space-y-4">
+                <div class="flex items-center gap-4 flex-wrap">
+                    <div class="w-24 h-24 rounded-full bg-primary/10 dark:bg-blue-900/30 flex items-center justify-center overflow-hidden border border-primary/20 dark:border-blue-500/30">
+                        <img id="edit-user-photo-preview" src="" alt="Foto do usuário" class="hidden w-full h-full object-cover" />
+                        <span id="edit-user-photo-placeholder" class="material-symbols-outlined text-4xl text-primary dark:text-blue-300">account_circle</span>
+                    </div>
+                    <div class="flex flex-col gap-2">
+                        <input id="edit-user-photo-input" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" />
+                        <div class="flex flex-wrap gap-2">
+                            <button type="button" id="edit-user-photo-upload-btn" class="px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 flex items-center gap-2 text-sm">
+                                <span class="material-symbols-outlined text-base">upload</span>
+                                Alterar foto
+                            </button>
+                            <button type="button" id="edit-user-photo-remove-btn" class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm opacity-50" disabled>
+                                <span class="material-symbols-outlined text-base">delete</span>
+                                Remover
+                            </button>
+                        </div>
+                        <p class="text-xs text-text-secondary dark:text-gray-400">Formatos aceitos: JPG, PNG ou WEBP (até 4MB)</p>
+                    </div>
+                </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium mb-2">Nome completo</label>
@@ -1405,10 +1818,10 @@
         </div>
     </div>
 
-    <script src="../js/api.js?v=20251208"></script>
-    <script src="../js/config.js?v=20251208"></script>
-    <script src="../js/main.js?v=20251208"></script>
-    <script src="../js/dashboard.js?v=20251208"></script>
+    <script src="../js/api.js?v=20251209"></script>
+    <script src="../js/config.js?v=20251209"></script>
+    <script src="../js/main.js?v=20251209"></script>
+    <script src="../js/dashboard.js?v=20251209-1"></script>
     <script>
         // Logout backup (já definido em dashboard.js, mas mantido para compatibilidade)
         if (typeof logout === 'undefined') {

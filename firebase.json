@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "scenic-lane-480423-t5",
     "public": ".",
     "ignore": [
       "firebase.json",
@@ -27,7 +28,7 @@
         "headers": [
           {
             "key": "Cache-Control",
-            "value": "public, max-age=3600"
+            "value": "public, max-age=0, must-revalidate"
           }
         ]
       },
@@ -36,7 +37,7 @@
         "headers": [
           {
             "key": "Cache-Control",
-            "value": "public, max-age=300"
+            "value": "public, max-age=60, must-revalidate"
           }
         ]
       }

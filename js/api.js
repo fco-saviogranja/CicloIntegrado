@@ -4,7 +4,7 @@
  */
 
 const API = {
-  baseURL: 'https://us-central1-scenic-lane-480423-t5.cloudfunctions.net/cicloIntegradoAPI',
+  baseURL: 'https://us-central1-scenic-lane-480423-t5.cloudfunctions.net/ciclo-integrado',
   
   // ============================================
   // AUTENTICAÇÃO
@@ -135,7 +135,16 @@ const API = {
       
       if (!response.ok) {
         const error = await response.json().catch(() => ({}));
-        throw new Error(error.message || `Erro HTTP: ${response.status}`);
+        const detailedMessage = error.message
+          || error.error?.message
+          || error.error?.detail
+          || error.error?.description
+          || error.errorMessage
+          || error.detail
+          || error.description
+          || `Erro HTTP: ${response.status}`;
+        const normalizedError = detailedMessage.toString();
+        throw new Error(normalizedError);
       }
       
       const rawText = await response.text();
@@ -339,6 +348,39 @@ const API = {
    */
   async getReceita() {
     return this.request('/admin/revenue');
+  },
+
+  // ============================================
+  // CUPONS
+  // ============================================
+
+  /**
+   * Lista cupons de desconto cadastrados
+   */
+  async getCupons(filters = {}) {
+    const params = new URLSearchParams();
+    Object.entries(filters).forEach(([key, value]) => {
+      if (value === undefined || value === null) {
+        return;
+      }
+      if (typeof value === 'string' && (value.trim() === '' || value === 'all')) {
+        return;
+      }
+      params.set(key, value);
+    });
+
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    return this.request(`/admin/coupons${suffix}`);
+  },
+
+  /**
+   * Cria um novo cupom de desconto
+   */
+  async createCupom(data) {
+    return this.request('/admin/coupons', {
+      method: 'POST',
+      body: JSON.stringify(data)
+    });
   },
   
   /**

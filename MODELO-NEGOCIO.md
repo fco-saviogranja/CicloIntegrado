@@ -10,7 +10,7 @@ Você é o **Admin Master (Proprietário)** do Ciclo Integrado. Abaixo estão su
 
 ### Email Padrão (Recomendado)
 ```
-Email: admin@ciclo-integrado.com
+Email: admin@ciclointegrado.online
 Senha: Sua-Senha-Segura-Aqui (Você escolhe)
 Municipio: SISTEMA (proprietário do sistema geral)
 Role: admin_master
@@ -22,7 +22,7 @@ Role: admin_master
 
 ```json
 {
-  "email": "admin@ciclo-integrado.com",
+  "email": "admin@ciclointegrado.online",
   "password": "sua-senha-super-segura",
   "name": "Proprietário - Ciclo Integrado",
   "role": "admin_master",
@@ -276,7 +276,7 @@ Quando você faz login com suas credenciais, você vê:
 
 ### 1. Você (Proprietário) faz login:
 ```
-Email: admin@ciclo-integrado.com
+Email: admin@ciclointegrado.online
 Senha: Sua-Senha-Aqui
   ↓
 Sistema reconhece role: "admin_master"
