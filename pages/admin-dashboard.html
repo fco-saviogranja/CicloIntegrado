@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8"/>
@@ -10,6 +10,15 @@
     <link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
     <link href="../css/styles.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/antd@5.11.5/dist/reset.min.css" rel="stylesheet"/>
+    <link href="https://cdn.jsdelivr.net/npm/antd@5.11.5/dist/antd.min.css" rel="stylesheet"/>
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.3/dist/echarts.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/recharts@2.12.0/dist/Recharts.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.6.0/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/antd@5.11.5/dist/antd.min.js"></script>
+    <script src="../js/recharts-lucide.js"></script>
     <script>
         tailwind.config = {
             darkMode: "class",
@@ -34,9 +43,6 @@
         }
     </script>
     <style>
-        .material-symbols-outlined {
-            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
-        }
         .chart-bar {
             transition: width 0.5s ease-in-out;
         }
@@ -105,27 +111,27 @@
                 <!-- Navigation -->
                 <nav class="flex flex-col gap-2">
                     <a href="#dashboard" data-section-target="dashboard" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg bg-primary/10 text-primary">
-                        <span class="material-symbols-outlined">dashboard</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
                         <p class="text-sm font-medium">Dashboard Administrativo</p>
                     </a>
                     <a href="#municipios" data-section-target="municipios" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <span class="material-symbols-outlined">apartment</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21v-4a6 6 0 0 1 6-6h6a6 6 0 0 1 6 6v4"/><rect x="3" y="21" width="18" height="3"/><path d="M9 7h1m4 0h1M9 4h1m4 0h1"/></svg>
                         <p class="text-sm font-medium">Municípios</p>
                     </a>
                     <a href="#usuarios" data-section-target="usuarios" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <span class="material-symbols-outlined">group</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                         <p class="text-sm font-medium">Usuários</p>
                     </a>
                     <a href="#faturamento" data-section-target="faturamento" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <span class="material-symbols-outlined">payments</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                         <p class="text-sm font-medium">Faturamento</p>
                     </a>
                     <a href="#relatorios" data-section-target="relatorios" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <span class="material-symbols-outlined">analytics</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><rect x="7" y="10" width="3" height="11"/><rect x="14" y="5" width="3" height="16"/></svg>
                         <p class="text-sm font-medium">Relatórios</p>
                     </a>
                     <a href="#configuracoes" data-section-target="configuracoes" class="nav-item flex items-center gap-3 px-3 py-2 rounded-lg text-text-secondary dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700">
-                        <span class="material-symbols-outlined">settings</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24"/></svg>
                         <p class="text-sm font-medium">Configurações</p>
                     </a>
                 </nav>
@@ -134,11 +140,11 @@
             <!-- Bottom Actions -->
             <div class="p-4 border-t border-border-light dark:border-border-dark">
                 <button onclick="toggleDarkMode()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 text-text-secondary dark:text-gray-400">
-                    <span class="material-symbols-outlined">dark_mode</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
                     <span class="text-sm">Modo Escuro</span>
                 </button>
                 <button onclick="logout()" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 mt-2">
-                    <span class="material-symbols-outlined">logout</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
                     <span class="text-sm">Sair</span>
                 </button>
             </div>
@@ -154,13 +160,13 @@
                 </div>
                 <div class="flex items-center gap-4">
                     <button class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg relative">
-                        <span class="material-symbols-outlined text-text-secondary dark:text-gray-400">notifications</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
                         <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                     </button>
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 bg-primary rounded-full flex items-center justify-center overflow-hidden">
                             <img id="header-user-avatar" src="" alt="Foto do usuário" class="hidden w-full h-full object-cover"/>
-                            <span id="header-user-icon" class="material-symbols-outlined text-white text-lg">account_circle</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                         </div>
                         <div class="text-right">
                             <p id="header-user-name" class="text-sm font-medium">Admin Master</p>
@@ -179,14 +185,14 @@
                     <div class="stat-card bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl p-6 text-white shadow-lg">
                         <div class="flex items-start justify-between mb-4">
                             <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                                <span class="material-symbols-outlined text-2xl">apartment</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21v-4a6 6 0 0 1 6-6h6a6 6 0 0 1 6 6v4"/><rect x="3" y="21" width="18" height="3"/><path d="M9 7h1m4 0h1M9 4h1m4 0h1"/></svg>
                             </div>
                             <span class="text-xs bg-white/20 px-2 py-1 rounded-full">Resumo</span>
                         </div>
                         <h3 id="stat-municipios-total" class="text-3xl font-bold mb-1">0</h3>
                         <p id="stat-municipios-ativos" class="text-sm text-blue-100">Municípios ativos: 0</p>
                         <div class="mt-4 flex items-center text-xs">
-                            <span class="material-symbols-outlined text-sm mr-1">update</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36M20.49 15a9 9 0 0 1-14.85 3.36"/></svg>
                             <span>Atualizado em tempo real</span>
                         </div>
                     </div>
@@ -195,14 +201,14 @@
                     <div class="stat-card bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
                         <div class="flex items-start justify-between mb-4">
                             <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                                <span class="material-symbols-outlined text-2xl">group</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                             </div>
                             <span class="text-xs bg-white/20 px-2 py-1 rounded-full">Usuários</span>
                         </div>
                         <h3 id="stat-usuarios-total" class="text-3xl font-bold mb-1">0</h3>
                         <p id="stat-usuarios-ativos" class="text-sm text-green-100">Usuários ativos: 0</p>
                         <div class="mt-4 flex items-center text-xs">
-                            <span class="material-symbols-outlined text-sm mr-1">update</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36M20.49 15a9 9 0 0 1-14.85 3.36"/></svg>
                             <span>Atualizado em tempo real</span>
                         </div>
                     </div>
@@ -211,14 +217,14 @@
                     <div class="stat-card bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl p-6 text-white shadow-lg">
                         <div class="flex items-start justify-between mb-4">
                             <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                                <span class="material-symbols-outlined text-2xl">payments</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                             </div>
                             <span class="text-xs bg-white/20 px-2 py-1 rounded-full">Receita</span>
                         </div>
                         <h3 id="stat-receita-mensal" class="text-3xl font-bold mb-1">R$ 0,00</h3>
                         <p id="stat-receita-anual" class="text-sm text-purple-100">Projeção anual: R$ 0,00</p>
                         <div class="mt-4 flex items-center text-xs">
-                            <span class="material-symbols-outlined text-sm mr-1">update</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36M20.49 15a9 9 0 0 1-14.85 3.36"/></svg>
                             <span>Atualizado em tempo real</span>
                         </div>
                     </div>
@@ -227,14 +233,14 @@
                     <div class="stat-card bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl p-6 text-white shadow-lg">
                         <div class="flex items-start justify-between mb-4">
                             <div class="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center">
-                                <span class="material-symbols-outlined text-2xl">description</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="13" x2="12" y2="17"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
                             </div>
                             <span class="text-xs bg-white/20 px-2 py-1 rounded-full">Contratos</span>
                         </div>
                         <h3 id="stat-contratos-total" class="text-3xl font-bold mb-1">0</h3>
                         <p id="stat-contratos-ativos" class="text-sm text-amber-100">Ativos: 0</p>
                         <div class="mt-4 flex items-center text-xs">
-                            <span class="material-symbols-outlined text-sm mr-1">update</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36M20.49 15a9 9 0 0 1-14.85 3.36"/></svg>
                             <span>Atualizado em tempo real</span>
                         </div>
                     </div>
@@ -268,7 +274,7 @@
                             <div class="flex items-center justify-between p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                                 <div class="flex items-center gap-3">
                                     <div class="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center text-white">
-                                        <span class="material-symbols-outlined">workspace_premium</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2c-1.1 0-2 .9-2 2v2c0 .55.45 1 1 1h2c.55 0 1-.45 1-1V4c0-1.1-.9-2-2-2z"/><rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="15" r="2"/></svg>
                                     </div>
                                     <div>
                                         <p class="font-medium">Premium</p>
@@ -283,7 +289,7 @@
                             <div class="flex items-center justify-between p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
                                 <div class="flex items-center gap-3">
                                     <div class="w-12 h-12 bg-purple-500 rounded-lg flex items-center justify-center text-white">
-                                        <span class="material-symbols-outlined">business_center</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"/><path d="M16 3h-3V2a1 1 0 0 0-1-1h-2a1 1 0 0 0-1 1v1H8"/></svg>
                                     </div>
                                     <div>
                                         <p class="font-medium">Profissional</p>
@@ -298,7 +304,7 @@
                             <div class="flex items-center justify-between p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
                                 <div class="flex items-center gap-3">
                                     <div class="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center text-white">
-                                        <span class="material-symbols-outlined">verified</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
                                     </div>
                                     <div>
                                         <p class="font-medium">Standard</p>
@@ -326,7 +332,7 @@
                                 <p class="text-sm text-text-secondary dark:text-gray-400 mt-1">Gerencie todos os municípios da plataforma</p>
                             </div>
                             <button onclick="openCreateModal()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 flex items-center gap-2 font-medium">
-                                <span class="material-symbols-outlined text-lg">add</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                                 Novo Município
                             </button>
                         </div>
@@ -337,7 +343,7 @@
                             <div class="md:col-span-2">
                                 <label for="municipio-search" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Buscar Município</label>
                                 <div class="relative">
-                                    <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/70 dark:text-gray-500">search</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                                     <input id="municipio-search" type="text" placeholder="Digite o nome, estado ou ID" class="w-full pl-10 pr-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" />
                                 </div>
                             </div>
@@ -388,7 +394,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center gap-3">
                                             <div class="w-10 h-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex items-center justify-center">
-                                                <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">location_city</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="2" width="18" height="20" rx="2"/><line x1="9" y1="2" x2="9" y2="22"/><line x1="15" y1="2" x2="15" y2="22"/><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="13" x2="21" y2="13"/></svg>
                                             </div>
                                             <div>
                                                 <p class="font-medium">Prefeitura de São Paulo</p>
@@ -420,13 +426,13 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center gap-2">
                                             <button class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Editar">
-                                                <span class="material-symbols-outlined text-lg text-text-secondary dark:text-gray-400">edit</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                                             </button>
                                             <button class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Ver detalhes">
-                                                <span class="material-symbols-outlined text-lg text-text-secondary dark:text-gray-400">visibility</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                             </button>
                                             <button class="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Excluir">
-                                                <span class="material-symbols-outlined text-lg text-red-600 dark:text-red-400">delete</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                                             </button>
                                         </div>
                                     </td>
@@ -435,7 +441,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center gap-3">
                                             <div class="w-10 h-10 bg-purple-100 dark:bg-purple-900/30 rounded-lg flex items-center justify-center">
-                                                <span class="material-symbols-outlined text-purple-600 dark:text-purple-400">location_city</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="2" width="18" height="20" rx="2"/><line x1="9" y1="2" x2="9" y2="22"/><line x1="15" y1="2" x2="15" y2="22"/><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="13" x2="21" y2="13"/></svg>
                                             </div>
                                             <div>
                                                 <p class="font-medium">Prefeitura do Rio de Janeiro</p>
@@ -467,13 +473,13 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center gap-2">
                                             <button class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Editar">
-                                                <span class="material-symbols-outlined text-lg text-text-secondary dark:text-gray-400">edit</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                                             </button>
                                             <button class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Ver detalhes">
-                                                <span class="material-symbols-outlined text-lg text-text-secondary dark:text-gray-400">visibility</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                             </button>
                                             <button class="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Excluir">
-                                                <span class="material-symbols-outlined text-lg text-red-600 dark:text-red-400">delete</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                                             </button>
                                         </div>
                                     </td>
@@ -482,7 +488,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center gap-3">
                                             <div class="w-10 h-10 bg-green-100 dark:bg-green-900/30 rounded-lg flex items-center justify-center">
-                                                <span class="material-symbols-outlined text-green-600 dark:text-green-400">location_city</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="2" width="18" height="20" rx="2"/><line x1="9" y1="2" x2="9" y2="22"/><line x1="15" y1="2" x2="15" y2="22"/><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="13" x2="21" y2="13"/></svg>
                                             </div>
                                             <div>
                                                 <p class="font-medium">Prefeitura de Brasília</p>
@@ -514,13 +520,13 @@
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <div class="flex items-center gap-2">
                                             <button class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Editar">
-                                                <span class="material-symbols-outlined text-lg text-text-secondary dark:text-gray-400">edit</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"/></svg>
                                             </button>
                                             <button class="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg" title="Ver detalhes">
-                                                <span class="material-symbols-outlined text-lg text-text-secondary dark:text-gray-400">visibility</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
                                             </button>
                                             <button class="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg" title="Excluir">
-                                                <span class="material-symbols-outlined text-lg text-red-600 dark:text-red-400">delete</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                                             </button>
                                         </div>
                                     </td>
@@ -551,7 +557,7 @@
                                     <p class="text-sm text-text-secondary dark:text-gray-400 mt-1">Controle de acessos e perfis vinculados aos municípios</p>
                                 </div>
                                 <button onclick="openCreateUserModal()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 flex items-center gap-2 font-medium">
-                                    <span class="material-symbols-outlined text-lg">person_add</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="17" y1="11" x2="23" y2="11"/></svg>
                                     Novo Usuário
                                 </button>
                             </div>
@@ -565,7 +571,7 @@
                                             <p class="text-xs uppercase tracking-wide text-text-secondary dark:text-gray-500">Total de Usuários</p>
                                             <p id="user-summary-total" class="text-2xl font-semibold mt-1">0</p>
                                         </div>
-                                        <span class="material-symbols-outlined text-primary">group</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                                     </div>
                                     <p id="user-summary-status" class="text-sm text-text-secondary dark:text-gray-400 mt-3">Ativos: 0 • Inativos: 0</p>
                                     <p id="user-summary-filtered" class="text-xs text-text-secondary/80 dark:text-gray-500 mt-1">Filtrados: 0</p>
@@ -582,7 +588,7 @@
                                             <p class="text-xs uppercase tracking-wide text-text-secondary dark:text-gray-500">Admin Master</p>
                                             <p id="user-summary-role-admin-master" class="text-2xl font-semibold mt-1">0</p>
                                         </div>
-                                        <span class="material-symbols-outlined text-blue-500">verified_user</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 12 15 15 10"/></svg>
                                     </div>
                                     <p id="user-summary-role-admin-master-share" class="text-sm text-text-secondary dark:text-gray-400 mt-3">Ativos: 0 • 0% do total</p>
                                     <div class="mt-4">
@@ -598,7 +604,7 @@
                                             <p class="text-xs uppercase tracking-wide text-text-secondary dark:text-gray-500">Admins Municipais</p>
                                             <p id="user-summary-role-admin-municipio" class="text-2xl font-semibold mt-1">0</p>
                                         </div>
-                                        <span class="material-symbols-outlined text-amber-500">apartment</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21v-4a6 6 0 0 1 6-6h6a6 6 0 0 1 6 6v4"/><rect x="3" y="21" width="18" height="3"/><path d="M9 7h1m4 0h1M9 4h1m4 0h1"/></svg>
                                     </div>
                                     <p id="user-summary-role-admin-municipio-share" class="text-sm text-text-secondary dark:text-gray-400 mt-3">Ativos: 0 • 0% do total</p>
                                     <div class="mt-4">
@@ -614,7 +620,7 @@
                                             <p class="text-xs uppercase tracking-wide text-text-secondary dark:text-gray-500">Gestores de Contrato</p>
                                             <p id="user-summary-role-gestor-contrato" class="text-2xl font-semibold mt-1">0</p>
                                         </div>
-                                        <span class="material-symbols-outlined text-purple-500">supervisor_account</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                                     </div>
                                     <p id="user-summary-role-gestor-contrato-share" class="text-sm text-text-secondary dark:text-gray-400 mt-3">Ativos: 0 • 0% do total</p>
                                     <div class="mt-4">
@@ -630,7 +636,7 @@
                                             <p class="text-xs uppercase tracking-wide text-text-secondary dark:text-gray-500">Fiscais de Contrato</p>
                                             <p id="user-summary-role-fiscal-contrato" class="text-2xl font-semibold mt-1">0</p>
                                         </div>
-                                        <span class="material-symbols-outlined text-green-600">task_alt</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0z"/></svg>
                                     </div>
                                     <p id="user-summary-role-fiscal-contrato-share" class="text-sm text-text-secondary dark:text-gray-400 mt-3">Ativos: 0 • 0% do total</p>
                                     <div class="mt-4">
@@ -647,7 +653,7 @@
                                 <div class="md:col-span-2">
                                     <label for="usuario-search" class="block text-sm font-medium text-text-secondary dark:text-gray-400 mb-2">Buscar Usuário</label>
                                     <div class="relative">
-                                        <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-text-secondary/70 dark:text-gray-500">search</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
                                         <input id="usuario-search" type="text" placeholder="Nome, email ou CPF" class="w-full pl-10 pr-4 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-primary" />
                                     </div>
                                 </div>
@@ -695,7 +701,7 @@
                                     <tr>
                                         <td colspan="5" class="px-6 py-8 text-center text-text-secondary dark:text-gray-400">
                                             <div class="flex flex-col items-center gap-4">
-                                                <span class="material-symbols-outlined text-5xl opacity-50">group</span>
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                                                 <p>Nenhum usuário encontrado no momento.</p>
                                                 <button onclick="openCreateUserModal()" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90">
                                                     Cadastrar primeiro usuário
@@ -725,7 +731,7 @@
                             <p class="text-sm text-text-secondary dark:text-gray-400">Atualize seus dados pessoais, preferências e foto de exibição.</p>
                         </div>
                         <button id="config-profile-back" type="button" class="inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition">
-                            <span class="material-symbols-outlined text-base">arrow_back</span>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
                             Voltar para Configurações
                         </button>
                     </div>
@@ -739,17 +745,17 @@
                             <div class="flex flex-col items-center gap-4">
                                 <div class="relative w-32 h-32 rounded-full overflow-hidden bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
                                     <img id="profile-photo-preview" src="" alt="Pré-visualização da foto" class="hidden w-full h-full object-cover"/>
-                                    <span id="profile-photo-placeholder" class="material-symbols-outlined text-5xl text-primary/60 dark:text-primary/70">account_circle</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                                     <div id="profile-photo-loading" class="hidden absolute inset-0 bg-black/40 text-white text-sm font-medium flex items-center justify-center">Enviando...</div>
                                 </div>
                                 <input id="profile-photo-input" type="file" accept="image/jpeg,image/png,image/webp" class="hidden"/>
                                 <div class="w-full flex flex-col gap-2">
                                     <button id="profile-photo-upload-btn" type="button" class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition">
-                                        <span class="material-symbols-outlined text-base">upload</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                                         Selecionar nova foto
                                     </button>
                                     <button id="profile-photo-remove-btn" type="button" class="hidden inline-flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium border border-red-200 text-red-600 rounded-lg hover:bg-red-50 dark:border-red-800 dark:hover:bg-red-900/30 transition">
-                                        <span class="material-symbols-outlined text-base">delete</span>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                                         <span class="profile-remove-label">Remover foto atual</span>
                                     </button>
                                     <p class="text-xs text-text-secondary dark:text-gray-500">Formatos suportados: JPG, PNG ou WEBP, até 4MB.</p>
@@ -782,7 +788,7 @@
                                     Cancelar
                                 </button>
                                 <button id="profile-save-btn" type="submit" class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white text-sm font-medium rounded-lg hover:bg-primary/90 transition">
-                                    <span class="material-symbols-outlined text-base">save</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                                     <span class="profile-save-label">Salvar alterações</span>
                                 </button>
                             </div>
@@ -798,7 +804,7 @@
                                     <p class="text-sm text-text-secondary dark:text-gray-400">Receita mensal atual</p>
                                     <h3 id="faturamento-mensal-total" class="text-2xl font-semibold mt-2">R$ 0,00</h3>
                                 </div>
-                                <span class="material-symbols-outlined text-primary">payments</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                             </div>
                             <p id="faturamento-mensal-variacao" class="mt-4 text-sm font-medium text-text-secondary dark:text-gray-400 transition-colors">Sem histórico anterior</p>
                         </div>
@@ -809,7 +815,7 @@
                                     <p class="text-sm text-text-secondary dark:text-gray-400">Projeção anual</p>
                                     <h3 id="faturamento-anual-projetada" class="text-2xl font-semibold mt-2">R$ 0,00</h3>
                                 </div>
-                                <span class="material-symbols-outlined text-purple-500">trending_up</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 17"/><polyline points="17 6 23 6 23 12"/></svg>
                             </div>
                             <p class="mt-4 text-sm text-text-secondary dark:text-gray-400">Cálculo automático com base nos contratos ativos</p>
                         </div>
@@ -820,7 +826,7 @@
                                     <p class="text-sm text-text-secondary dark:text-gray-400">Ticket médio por município</p>
                                     <h3 id="faturamento-ticket-medio" class="text-2xl font-semibold mt-2">R$ 0,00</h3>
                                 </div>
-                                <span class="material-symbols-outlined text-emerald-500">request_quote</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7c0-1 1-2 2-2h12c1 0 2 1 2 2v10c0 1-1 2-2 2H6c-1 0-2-1-2-2V7z"/><path d="M8 11h8"/><path d="M8 15h8"/></svg>
                             </div>
                             <p class="mt-4 text-sm text-text-secondary dark:text-gray-400">Baseado na receita recorrente e municípios ativos</p>
                         </div>
@@ -831,7 +837,7 @@
                                     <p class="text-sm text-text-secondary dark:text-gray-400">Base ativa</p>
                                     <h3 id="faturamento-municipios-ativos" class="text-2xl font-semibold mt-2">0 municípios</h3>
                                 </div>
-                                <span class="material-symbols-outlined text-blue-500">location_city</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="2" width="18" height="20" rx="2"/><line x1="9" y1="2" x2="9" y2="22"/><line x1="15" y1="2" x2="15" y2="22"/><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="13" x2="21" y2="13"/></svg>
                             </div>
                             <p class="mt-4 text-sm text-text-secondary dark:text-gray-400">Municípios com licenças vigentes na plataforma</p>
                         </div>
@@ -990,13 +996,13 @@
                                 <p id="coupons-summary" class="text-xs text-text-secondary/80 dark:text-gray-400 mt-2">Nenhum cupom cadastrado no momento.</p>
                             </div>
                             <button id="coupon-create-open" type="button" class="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-white rounded-lg font-medium hover:bg-primary/90">
-                                <span class="material-symbols-outlined text-base">add</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                                 Novo cupom
                             </button>
                         </div>
                         <div id="coupons-empty-state" class="mt-6 rounded-xl border border-dashed border-border-light dark:border-border-dark bg-gray-50/60 dark:bg-gray-800/40">
                             <div class="flex flex-col items-center justify-center gap-2 py-10 text-center text-sm text-text-secondary dark:text-gray-400">
-                                <span class="material-symbols-outlined text-3xl text-text-secondary/60 dark:text-gray-500">local_offer</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 7h10v10H7z"/><path d="M17 3.5a2.5 2.5 0 1 1 0 5"/></svg>
                                 <p>Nenhum cupom cadastrado ainda. Crie o primeiro cupom para incentivar renovações ou ofertas sazonais.</p>
                             </div>
                         </div>
@@ -1012,7 +1018,7 @@
                                     <p class="text-sm text-text-secondary dark:text-gray-400">Licenças a vencer</p>
                                     <h3 id="reports-expiring-total" class="text-3xl font-bold text-text-primary dark:text-gray-100 mt-1">0</h3>
                                 </div>
-                                <span class="material-symbols-outlined text-3xl text-primary">calendar_month</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
                             </div>
                             <p id="reports-expiring-range-label" class="text-xs text-text-secondary dark:text-gray-400">Monitorando próximos 30 dias</p>
                         </div>
@@ -1023,7 +1029,7 @@
                                     <p class="text-sm text-text-secondary dark:text-gray-400">Próxima expiração</p>
                                     <h3 id="reports-next-expiration-value" class="text-3xl font-bold text-text-primary dark:text-gray-100 mt-1">-</h3>
                                 </div>
-                                <span class="material-symbols-outlined text-3xl text-amber-500">event_upcoming</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 16 14"/></svg>
                             </div>
                             <p id="reports-next-expiration-municipio" class="text-xs text-text-secondary dark:text-gray-400">Nenhuma licença vencendo no período monitorado.</p>
                         </div>
@@ -1034,7 +1040,7 @@
                                     <p class="text-sm text-text-secondary dark:text-gray-400">Uso crítico de usuários</p>
                                     <h3 id="reports-critical-count" class="text-3xl font-bold text-text-primary dark:text-gray-100 mt-1">0</h3>
                                 </div>
-                                <span class="material-symbols-outlined text-3xl text-amber-500">warning</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3.04h16.94a2 2 0 0 0 1.71-3.04l-8.47-14.14a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
                             </div>
                             <p id="reports-critical-summary" class="text-xs text-text-secondary dark:text-gray-400">Ocupação ≥ 90% do limite contratado</p>
                             <p class="text-xs text-text-secondary dark:text-gray-400">
@@ -1049,9 +1055,21 @@
                                     <p class="text-sm text-text-secondary dark:text-gray-400">Uso médio</p>
                                     <h3 id="reports-average-usage" class="text-3xl font-bold text-text-primary dark:text-gray-100 mt-1">-</h3>
                                 </div>
-                                <span class="material-symbols-outlined text-3xl text-emerald-500">trending_up</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 17"/><polyline points="17 6 23 6 23 12"/></svg>
                             </div>
                             <p id="reports-average-usage-subtitle" class="text-xs text-text-secondary dark:text-gray-400">Sem limites de usuários configurados</p>
+                        </div>
+                    </div>
+
+                    <!-- Gráficos de Análise -->
+                    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6">
+                            <h3 class="text-lg font-semibold mb-4">Distribuição por Plano</h3>
+                            <div id="reports-plan-chart" style="width: 100%; height: 320px;"></div>
+                        </div>
+                        <div class="bg-card-light dark:bg-card-dark rounded-xl border border-border-light dark:border-border-dark shadow-sm p-6">
+                            <h3 class="text-lg font-semibold mb-4">Ocupação de Capacidade</h3>
+                            <div id="reports-capacity-chart" style="width: 100%; height: 320px;"></div>
                         </div>
                     </div>
 
@@ -1070,12 +1088,20 @@
                                     <option value="60">Próximos 60 dias</option>
                                     <option value="90">Próximos 90 dias</option>
                                 </select>
+                                <button id="reports-expiry-export-pdf" type="button" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                    PDF
+                                </button>
+                                <button id="reports-expiry-export-csv" type="button" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+                                    CSV
+                                </button>
                                 <button id="reports-expiry-refresh" type="button" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-medium">Atualizar</button>
                             </div>
                         </div>
                         <div class="px-6 py-3">
                             <div id="reports-expiring-loading" class="flex items-center gap-2 text-sm text-text-secondary dark:text-gray-400 hidden">
-                                <span class="material-symbols-outlined animate-spin">progress_activity</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                                 <span>Atualizando dados...</span>
                             </div>
                             <p id="reports-expiring-empty" class="text-sm text-text-secondary dark:text-gray-400 hidden">Nenhuma licença vence no período monitorado.</p>
@@ -1119,16 +1145,27 @@
                                     <option value="pendente">Pendentes</option>
                                     <option value="inativo">Inativos</option>
                                 </select>
+                                <select id="reports-capacity-estado" class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-white dark:bg-gray-800 text-sm">
+                                    <option value="all">Todos os estados</option>
+                                </select>
                                 <label class="inline-flex items-center gap-2 text-sm text-text-secondary dark:text-gray-400">
                                     <input id="reports-capacity-only-critical" type="checkbox" class="rounded border-border-light dark:border-border-dark" />
                                     Apenas críticos
                                 </label>
+                                <button id="reports-capacity-export-pdf" type="button" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                    PDF
+                                </button>
+                                <button id="reports-capacity-export-csv" type="button" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm font-medium flex items-center gap-1">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/></svg>
+                                    CSV
+                                </button>
                                 <button id="reports-capacity-refresh" type="button" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 text-sm font-medium">Atualizar</button>
                             </div>
                         </div>
                         <div class="px-6 py-3">
                             <div id="reports-capacity-loading" class="flex items-center gap-2 text-sm text-text-secondary dark:text-gray-400 hidden">
-                                <span class="material-symbols-outlined animate-spin">progress_activity</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                                 <span>Atualizando dados...</span>
                             </div>
                             <p id="reports-capacity-empty" class="text-sm text-text-secondary dark:text-gray-400 hidden">Nenhum município atende aos filtros selecionados.</p>
@@ -1162,14 +1199,14 @@
                                     <h3 class="text-lg font-semibold">Perfil Ativo</h3>
                                     <p class="text-sm text-text-secondary dark:text-gray-400">Usuário logado e privilégios</p>
                                 </div>
-                                <span class="material-symbols-outlined text-primary">settings_account_box</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v6m0 6v6M4.22 4.22l4.24 4.24m5.08 5.08l4.24 4.24M1 12h6m6 0h6M4.22 19.78l4.24-4.24m5.08-5.08l4.24-4.24"/></svg>
                             </div>
                             <div class="pt-2 space-y-2 text-sm">
                                 <p><span class="text-text-secondary dark:text-gray-400">Nome:</span> <span id="config-current-user-name" class="font-medium">-</span></p>
                                 <p><span class="text-text-secondary dark:text-gray-400">E-mail:</span> <span id="config-current-user-email" class="font-medium">-</span></p>
                                 <p><span class="text-text-secondary dark:text-gray-400">Perfil:</span> <span id="config-current-user-role" class="font-medium">-</span></p>
                                 <p class="text-xs text-primary font-medium flex items-center gap-1">
-                                    <span class="material-symbols-outlined text-sm">arrow_outward</span>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
                                     Personalizar perfil
                                 </p>
                             </div>
@@ -1181,7 +1218,7 @@
                                     <h3 class="text-lg font-semibold">Infraestrutura</h3>
                                     <p class="text-sm text-text-secondary dark:text-gray-400">URLs e status de sincronização</p>
                                 </div>
-                                <span class="material-symbols-outlined text-blue-500">cloud_sync</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 18c-1.1 0-2-.9-2-2 0-1.05.85-1.95 1.9-2C7.5 12.9 8.5 12 9.8 12c1.1 0 2 .9 2 2h2c0-2.2-1.8-4-4-4-1.8 0-3.3 1.2-3.8 2.8-1 .5-1.7 1.5-1.7 2.6 0 1.7 1.3 3 3 3h2"/><polyline points="16 8 12 12 16 16"/><polyline points="12 8 16 12 12 16"/></svg>
                             </div>
                             <div class="pt-2 space-y-2 text-sm">
                                 <p><span class="text-text-secondary dark:text-gray-400">Backend:</span> <span id="config-backend-url" class="font-medium break-all">-</span></p>
@@ -1196,7 +1233,7 @@
                                     <h3 class="text-lg font-semibold">Resumo do Sistema</h3>
                                     <p class="text-sm text-text-secondary dark:text-gray-400">Indicadores principais</p>
                                 </div>
-                                <span class="material-symbols-outlined text-amber-500">dashboard_customize</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="2"/><rect x="4" y="4" width="8" height="8"/><rect x="12" y="4" width="8" height="8"/><rect x="4" y="12" width="8" height="8"/><rect x="12" y="12" width="8" height="8"/></svg>
                             </div>
                             <div class="pt-2 space-y-2 text-sm">
                                 <p><span class="text-text-secondary dark:text-gray-400">Municípios:</span> <span id="config-total-municipios" class="font-medium">0</span></p>
@@ -1237,7 +1274,7 @@
 
                         <div class="px-6 py-4">
                             <div id="audit-loading-indicator" class="flex items-center gap-2 text-text-secondary dark:text-gray-400 text-sm hidden">
-                                <span class="material-symbols-outlined animate-spin">progress_activity</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
                                 <span>Carregando registros...</span>
                             </div>
                             <p id="audit-empty-message" class="text-sm text-text-secondary dark:text-gray-400 hidden">Nenhum log encontrado para os filtros selecionados.</p>
@@ -1279,7 +1316,7 @@
             <div class="p-6 border-b border-border-light dark:border-border-dark flex items-center justify-between">
                 <h3 class="text-xl font-semibold">Novo Município</h3>
                 <button onclick="closeCreateModal()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                    <span class="material-symbols-outlined text-text-secondary dark:text-gray-400">close</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
             </div>
             <form class="p-6 space-y-4">
@@ -1324,7 +1361,7 @@
                 </div>
                 <div class="rounded-lg border border-dashed border-border-light dark:border-border-dark bg-gray-50/60 dark:bg-gray-800/40 p-4 text-sm text-text-secondary dark:text-gray-400">
                     <div class="flex items-start gap-3">
-                        <span class="material-symbols-outlined text-primary">info</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                         <p>Os detalhes de faturamento (plano, valores, parcelas e cupons) serão definidos posteriormente na aba <strong>Faturamento</strong>. Aqui cadastre apenas as informações básicas do município.</p>
                     </div>
                 </div>
@@ -1372,7 +1409,7 @@
                     <p class="text-sm text-text-secondary dark:text-gray-400">Defina o código, o tipo de desconto e a abrangência.</p>
                 </div>
                 <button id="coupon-close-btn" type="button" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                    <span class="material-symbols-outlined text-text-secondary dark:text-gray-400">close</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
             </div>
             <form id="coupon-create-form" class="p-6 space-y-4">
@@ -1421,7 +1458,7 @@
                 </div>
                 <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 border border-dashed border-border-light dark:border-border-dark rounded-lg px-4 py-3 bg-gray-50/60 dark:bg-gray-800/40 text-xs text-text-secondary dark:text-gray-400">
                     <div class="flex items-start gap-2">
-                        <span class="material-symbols-outlined text-base text-primary">info</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
                         <p>Deixe as datas em branco para um cupom disponível imediatamente e sem data de expiração. Defina limite de usos para controlar quantas ativações são permitidas.</p>
                     </div>
                 </div>
@@ -1442,7 +1479,7 @@
                     <p class="text-sm text-text-secondary dark:text-gray-400">Visualize os dados principais e métricas recentes</p>
                 </div>
                 <button onclick="closeViewModal()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                    <span class="material-symbols-outlined text-text-secondary dark:text-gray-400">close</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
             </div>
             <div class="p-6 space-y-6">
@@ -1532,7 +1569,7 @@
                     <p class="text-sm text-text-secondary dark:text-gray-400">Atualize as informações de cadastro e licenciamento</p>
                 </div>
                 <button onclick="closeEditModal()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                    <span class="material-symbols-outlined text-text-secondary dark:text-gray-400">close</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
             </div>
             <form id="editMunicipioForm" class="p-6 space-y-4">
@@ -1578,7 +1615,7 @@
 
                 <div class="rounded-lg border border-dashed border-border-light dark:border-border-dark bg-gray-50/60 dark:bg-gray-800/40 p-4 text-sm text-text-secondary dark:text-gray-400">
                     <div class="flex items-start gap-3">
-                        <span class="material-symbols-outlined text-primary">payments</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
                         <div class="space-y-1">
                             <p class="text-text-primary dark:text-gray-200"><span class="font-medium">Plano atual:</span> <span id="edit-municipio-plano-label">Pendente</span></p>
                             <p class="text-xs">Status do faturamento: <span id="edit-municipio-billing-status">Pendência</span></p>
@@ -1657,7 +1694,7 @@
                     <p class="text-sm text-text-secondary dark:text-gray-400">Cadastre um novo acesso para a plataforma</p>
                 </div>
                 <button onclick="closeCreateUserModal()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                    <span class="material-symbols-outlined text-text-secondary dark:text-gray-400">close</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
             </div>
             <form id="createUserForm" class="p-6 space-y-4">
@@ -1722,24 +1759,24 @@
                     <p class="text-sm text-text-secondary dark:text-gray-400">Atualize dados de contato e permissões</p>
                 </div>
                 <button onclick="closeEditUserModal()" class="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg">
-                    <span class="material-symbols-outlined text-text-secondary dark:text-gray-400">close</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                 </button>
             </div>
             <form id="editUserForm" class="p-6 space-y-4">
                 <div class="flex items-center gap-4 flex-wrap">
                     <div class="w-24 h-24 rounded-full bg-primary/10 dark:bg-blue-900/30 flex items-center justify-center overflow-hidden border border-primary/20 dark:border-blue-500/30">
                         <img id="edit-user-photo-preview" src="" alt="Foto do usuário" class="hidden w-full h-full object-cover" />
-                        <span id="edit-user-photo-placeholder" class="material-symbols-outlined text-4xl text-primary dark:text-blue-300">account_circle</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                     </div>
                     <div class="flex flex-col gap-2">
                         <input id="edit-user-photo-input" type="file" accept="image/jpeg,image/png,image/webp" class="hidden" />
                         <div class="flex flex-wrap gap-2">
                             <button type="button" id="edit-user-photo-upload-btn" class="px-3 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 flex items-center gap-2 text-sm">
-                                <span class="material-symbols-outlined text-base">upload</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                                 Alterar foto
                             </button>
                             <button type="button" id="edit-user-photo-remove-btn" class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 flex items-center gap-2 text-sm opacity-50" disabled>
-                                <span class="material-symbols-outlined text-base">delete</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>
                                 Remover
                             </button>
                         </div>
@@ -1821,6 +1858,8 @@
     <script src="../js/api.js?v=20251209"></script>
     <script src="../js/config.js?v=20251209"></script>
     <script src="../js/main.js?v=20251209"></script>
+    <script src="../js/antd-components.js?v=20251209"></script>
+    <script src="../js/antd-ui-components.js?v=20251209"></script>
     <script src="../js/dashboard.js?v=20251209-1"></script>
     <script>
         // Logout backup (já definido em dashboard.js, mas mantido para compatibilidade)

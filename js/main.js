@@ -107,6 +107,11 @@ document.addEventListener('DOMContentLoaded', function() {
     initMobileNavigation();
     animateOnLoad();
     
+    // Inicializar Lucide Icons
+    if (window.LucideHelper && typeof window.LucideHelper.replaceMaterialIcons === 'function') {
+        window.LucideHelper.replaceMaterialIcons();
+    }
+    
     // Validação de formulários
     const forms = document.querySelectorAll('form');
     forms.forEach(form => {

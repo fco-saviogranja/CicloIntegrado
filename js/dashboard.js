@@ -73,6 +73,7 @@ const reportsState = {
 const reportsFilters = {
     plan: 'all',
     status: 'all',
+    estado: 'all',
     onlyCritical: false
 };
 
@@ -1268,6 +1269,15 @@ function formatDateTime(value) {
         dateStyle: 'short',
         timeStyle: 'short'
     });
+}
+
+function formatDate(value) {
+    if (!value) return '';
+    const date = typeof value === 'object' && value.seconds
+        ? new Date(value.seconds * 1000)
+        : new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toLocaleDateString('pt-BR');
 }
 
 function applyUsuarioFilters() {
@@ -2677,6 +2687,10 @@ function updateReportsOverview() {
             ? 'Média de ocupação dos limites de usuários'
             : 'Sem limites de usuários configurados';
     }
+
+    // Renderizar gráficos após atualizar dados
+    renderReportsCharts();
+    populateEstadoFilter();
 }
 
 function renderExpiringLicenses() {
@@ -3046,6 +3060,16 @@ function setupReportsControls() {
         statusSelect.dataset.bound = 'true';
     }
 
+    const estadoSelect = document.getElementById('reports-capacity-estado');
+    if (estadoSelect && !estadoSelect.dataset.bound) {
+        estadoSelect.value = reportsFilters.estado || 'all';
+        estadoSelect.addEventListener('change', event => {
+            reportsFilters.estado = event.target.value || 'all';
+            renderCapacityTable();
+        });
+        estadoSelect.dataset.bound = 'true';
+    }
+
     const criticalCheckbox = document.getElementById('reports-capacity-only-critical');
     if (criticalCheckbox && !criticalCheckbox.dataset.bound) {
         criticalCheckbox.checked = reportsFilters.onlyCritical;
@@ -3062,6 +3086,31 @@ function setupReportsControls() {
             loadCapacityStats({ force: true }).catch(() => {});
         });
         capacityRefreshBtn.dataset.bound = 'true';
+    }
+
+    // Botões de exportação
+    const expiryPdfBtn = document.getElementById('reports-expiry-export-pdf');
+    if (expiryPdfBtn && !expiryPdfBtn.dataset.bound) {
+        expiryPdfBtn.addEventListener('click', exportExpiringToPDF);
+        expiryPdfBtn.dataset.bound = 'true';
+    }
+
+    const expiryCsvBtn = document.getElementById('reports-expiry-export-csv');
+    if (expiryCsvBtn && !expiryCsvBtn.dataset.bound) {
+        expiryCsvBtn.addEventListener('click', exportExpiringToCSV);
+        expiryCsvBtn.dataset.bound = 'true';
+    }
+
+    const capacityPdfBtn = document.getElementById('reports-capacity-export-pdf');
+    if (capacityPdfBtn && !capacityPdfBtn.dataset.bound) {
+        capacityPdfBtn.addEventListener('click', exportCapacityToPDF);
+        capacityPdfBtn.dataset.bound = 'true';
+    }
+
+    const capacityCsvBtn = document.getElementById('reports-capacity-export-csv');
+    if (capacityCsvBtn && !capacityCsvBtn.dataset.bound) {
+        capacityCsvBtn.addEventListener('click', exportCapacityToCSV);
+        capacityCsvBtn.dataset.bound = 'true';
     }
 }
 
@@ -5340,4 +5389,423 @@ function logout() {
     if (confirm('Deseja realmente sair?')) {
         API.logout();
     }
+}
+
+// ============================================
+// GRÁFICOS E EXPORTAÇÃO (Melhorias 1 e 2)
+// ============================================
+
+let reportsPlanChart = null;
+let reportsCapacityChart = null;
+
+function renderReportsCharts() {
+    renderPlanDistributionChart();
+    renderCapacityDistributionChart();
+}
+
+function disposeCharts() {
+    if (reportsPlanChart) {
+        reportsPlanChart.dispose();
+        reportsPlanChart = null;
+    }
+    if (reportsCapacityChart) {
+        reportsCapacityChart.dispose();
+        reportsCapacityChart = null;
+    }
+}
+
+function renderPlanDistributionChart() {
+    const container = document.getElementById('reports-plan-chart');
+    if (!container) return;
+
+    // Agregar por plano
+    const planCounts = {};
+    reportsState.capacity.data.forEach(item => {
+        const plan = item?.plan || 'pending';
+        planCounts[plan] = (planCounts[plan] || 0) + 1;
+    });
+
+    const planMap = { 
+        premium: 'Premium', 
+        profissional: 'Profissional', 
+        standard: 'Standard', 
+        pending: 'Pendente' 
+    };
+
+    const colorMap = {
+        premium: '#3b82f6',
+        profissional: '#f59e0b',
+        standard: '#10b981',
+        pending: '#6b7280'
+    };
+
+    const chartData = Object.keys(planCounts).map(key => ({
+        name: planMap[key] || key,
+        value: planCounts[key],
+        itemStyle: {
+            color: colorMap[key] || '#94a3b8'
+        }
+    }));
+
+    if (reportsPlanChart) {
+        reportsPlanChart.dispose();
+    }
+
+    reportsPlanChart = echarts.init(container);
+
+    const option = {
+        tooltip: {
+            trigger: 'item',
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            borderWidth: 0,
+            textStyle: {
+                color: '#fff',
+                fontSize: 13
+            },
+            formatter: (params) => {
+                const total = chartData.reduce((sum, item) => sum + item.value, 0);
+                const percent = ((params.value / total) * 100).toFixed(1);
+                return `<strong>${params.name}</strong><br/>${params.value} municípios (${percent}%)`;
+            }
+        },
+        legend: {
+            bottom: '5%',
+            left: 'center',
+            itemGap: 20,
+            textStyle: {
+                fontSize: 13,
+                fontWeight: 500
+            }
+        },
+        series: [{
+            type: 'pie',
+            radius: ['45%', '75%'],
+            center: ['50%', '45%'],
+            avoidLabelOverlap: true,
+            itemStyle: {
+                borderRadius: 8,
+                borderColor: '#fff',
+                borderWidth: 3
+            },
+            label: {
+                show: true,
+                position: 'outside',
+                formatter: '{b}\n{d}%',
+                fontSize: 12,
+                fontWeight: 600
+            },
+            emphasis: {
+                scale: true,
+                scaleSize: 15,
+                itemStyle: {
+                    shadowBlur: 20,
+                    shadowOffsetX: 0,
+                    shadowColor: 'rgba(0, 0, 0, 0.5)'
+                },
+                label: {
+                    show: true,
+                    fontSize: 14,
+                    fontWeight: 'bold'
+                }
+            },
+            animationType: 'scale',
+            animationEasing: 'elasticOut',
+            animationDelay: (idx) => idx * 100,
+            data: chartData
+        }]
+    };
+
+    reportsPlanChart.setOption(option);
+
+    // Responsividade
+    window.addEventListener('resize', () => {
+        if (reportsPlanChart) reportsPlanChart.resize();
+    });
+}
+
+function renderCapacityDistributionChart() {
+    const container = document.getElementById('reports-capacity-chart');
+    if (!container) return;
+
+    // Agregar por faixa de ocupação
+    const ranges = { '0-50%': 0, '50-75%': 0, '75-90%': 0, '90-100%': 0, '100%+': 0 };
+    reportsState.capacity.data.forEach(item => {
+        const percent = Number(item?.users?.usage_percent);
+        if (!Number.isFinite(percent)) return;
+        if (percent < 50) ranges['0-50%']++;
+        else if (percent < 75) ranges['50-75%']++;
+        else if (percent < 90) ranges['75-90%']++;
+        else if (percent < 100) ranges['90-100%']++;
+        else ranges['100%+']++;
+    });
+
+    const labels = Object.keys(ranges);
+    const values = Object.values(ranges);
+    const total = values.reduce((a, b) => a + b, 0);
+
+    if (reportsCapacityChart) {
+        reportsCapacityChart.dispose();
+    }
+
+    reportsCapacityChart = echarts.init(container);
+
+    const option = {
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'shadow',
+                shadowStyle: {
+                    color: 'rgba(0, 0, 0, 0.1)'
+                }
+            },
+            backgroundColor: 'rgba(0, 0, 0, 0.85)',
+            borderWidth: 0,
+            textStyle: {
+                color: '#fff',
+                fontSize: 13
+            },
+            formatter: (params) => {
+                const param = params[0];
+                const percent = total > 0 ? ((param.value / total) * 100).toFixed(1) : 0;
+                return `<strong>Faixa: ${param.name}</strong><br/>${param.value} municípios (${percent}%)`;
+            }
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '8%',
+            top: '5%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'category',
+            data: labels,
+            axisLine: {
+                lineStyle: { color: '#e5e7eb' }
+            },
+            axisLabel: {
+                color: '#6b7280',
+                fontSize: 12,
+                fontWeight: 500
+            }
+        },
+        yAxis: {
+            type: 'value',
+            minInterval: 1,
+            axisLine: { show: false },
+            axisTick: { show: false },
+            axisLabel: {
+                color: '#6b7280',
+                fontSize: 12
+            },
+            splitLine: {
+                lineStyle: {
+                    color: '#f3f4f6',
+                    type: 'dashed'
+                }
+            }
+        },
+        series: [{
+            type: 'bar',
+            data: values,
+            barWidth: '60%',
+            itemStyle: {
+                borderRadius: [8, 8, 0, 0],
+                color: (params) => {
+                    const colors = [
+                        new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: '#10b981' },
+                            { offset: 1, color: '#059669' }
+                        ]),
+                        new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: '#3b82f6' },
+                            { offset: 1, color: '#2563eb' }
+                        ]),
+                        new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: '#f59e0b' },
+                            { offset: 1, color: '#d97706' }
+                        ]),
+                        new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: '#ef4444' },
+                            { offset: 1, color: '#dc2626' }
+                        ]),
+                        new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                            { offset: 0, color: '#991b1b' },
+                            { offset: 1, color: '#7f1d1d' }
+                        ])
+                    ];
+                    return colors[params.dataIndex] || '#94a3b8';
+                }
+            },
+            emphasis: {
+                itemStyle: {
+                    shadowBlur: 10,
+                    shadowOffsetX: 0,
+                    shadowColor: 'rgba(0, 0, 0, 0.3)'
+                }
+            },
+            label: {
+                show: true,
+                position: 'top',
+                color: '#374151',
+                fontWeight: 600,
+                fontSize: 12
+            },
+            animationDelay: (idx) => idx * 150,
+            animationEasing: 'elasticOut'
+        }]
+    };
+
+    reportsCapacityChart.setOption(option);
+
+    // Responsividade
+    window.addEventListener('resize', () => {
+        if (reportsCapacityChart) reportsCapacityChart.resize();
+    });
+}
+
+function exportExpiringToPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text('Relatório: Licenças com Vencimento Próximo', 14, 20);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 28);
+    doc.text(`Período monitorado: ${reportsState.expiring.rangeDays} dias`, 14, 34);
+
+    const tableData = reportsState.expiring.data.map(item => [
+        item.municipio_nome || '-',
+        item.plan_label || '-',
+        item.expires_at ? formatDate(item.expires_at) : '-',
+        `${item.days_until_expiry || 0} dias`
+    ]);
+
+    doc.autoTable({
+        head: [['Município', 'Plano', 'Vencimento', 'Dias restantes']],
+        body: tableData,
+        startY: 40,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [19, 127, 236] }
+    });
+
+    doc.save(`licencas-vencimento-${Date.now()}.pdf`);
+}
+
+function exportExpiringToCSV() {
+    const headers = ['Município', 'Plano', 'Vencimento', 'Dias restantes'];
+    const rows = reportsState.expiring.data.map(item => [
+        item.municipio_nome || '-',
+        item.plan_label || '-',
+        item.expires_at ? formatDate(item.expires_at) : '-',
+        `${item.days_until_expiry || 0}`
+    ]);
+
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.map(cell => `"${cell}"`).join(',') + '\n';
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `licencas-vencimento-${Date.now()}.csv`;
+    link.click();
+}
+
+function exportCapacityToPDF() {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text('Relatório: Capacidade dos Municípios', 14, 20);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 28);
+
+    const tableData = getFilteredCapacityData().map(item => [
+        item.municipio_nome || '-',
+        item.plan_label || '-',
+        `${item.users?.current || 0} / ${item.users?.max || 'Ilimitado'}`,
+        `${item.users?.usage_percent || 0}%`,
+        formatStatusLabel(item.status || 'pending')
+    ]);
+
+    doc.autoTable({
+        head: [['Município', 'Plano', 'Usuários', 'Ocupação', 'Status']],
+        body: tableData,
+        startY: 34,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [19, 127, 236] }
+    });
+
+    doc.save(`capacidade-municipios-${Date.now()}.pdf`);
+}
+
+function exportCapacityToCSV() {
+    const headers = ['Município', 'Plano', 'Usuários Atual', 'Usuários Máx', 'Ocupação %', 'Status'];
+    const rows = getFilteredCapacityData().map(item => [
+        item.municipio_nome || '-',
+        item.plan_label || '-',
+        `${item.users?.current || 0}`,
+        `${item.users?.max || 'Ilimitado'}`,
+        `${item.users?.usage_percent || 0}`,
+        formatStatusLabel(item.status || 'pending')
+    ]);
+
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.map(cell => `"${cell}"`).join(',') + '\n';
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `capacidade-municipios-${Date.now()}.csv`;
+    link.click();
+}
+
+function getFilteredCapacityData() {
+    let filtered = [...reportsState.capacity.data];
+
+    const plan = reportsFilters.plan;
+    if (plan && plan !== 'all') {
+        filtered = filtered.filter(item => item.plan === plan);
+    }
+
+    const status = reportsFilters.status;
+    if (status && status !== 'all') {
+        filtered = filtered.filter(item => item.status === status);
+    }
+
+    const estado = reportsFilters.estado;
+    if (estado && estado !== 'all') {
+        filtered = filtered.filter(item => item.estado === estado);
+    }
+
+    if (reportsFilters.onlyCritical) {
+        filtered = filtered.filter(item => {
+            const percent = Number(item?.users?.usage_percent);
+            return Number.isFinite(percent) && percent >= 90;
+        });
+    }
+
+    return filtered;
+}
+
+function populateEstadoFilter() {
+    const select = document.getElementById('reports-capacity-estado');
+    if (!select) return;
+
+    const estados = new Set();
+    reportsState.capacity.data.forEach(item => {
+        if (item.estado) estados.add(item.estado);
+    });
+
+    const sorted = Array.from(estados).sort();
+    const options = ['<option value="all">Todos os estados</option>'];
+    sorted.forEach(estado => {
+        options.push(`<option value="${escapeHtml(estado)}">${escapeHtml(estado)}</option>`);
+    });
+
+    select.innerHTML = options.join('');
 }
