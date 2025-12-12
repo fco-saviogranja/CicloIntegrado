@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Relatórios - Ciclo Integrado</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        if (typeof tailwind !== 'undefined') {
+            tailwind.suppressWarnings = true;
+        }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="../js/api.js"></script>
+    
+    <style>
+        :root {
+            --primary: #ff5a2e;
+            --primary-medium: #fe8222;
+            --primary-light: #fd931d;
+        }
+        body { font-family: 'Readex Pro', sans-serif; }
+        .gradient-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-medium) 50%, var(--primary-light) 100%);
+        }
+        .sidebar-hidden { transform: translateX(-100%); }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden"></div>
+    
+    <aside id="sidebar" class="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-40 transition-transform duration-300 lg:translate-x-0 sidebar-hidden">
+        <div class="flex items-center justify-center border-b border-gray-200 px-4 py-3">
+            <svg width="120" height="30" viewBox="0 0 160 40" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#ff5a2e;stop-opacity:1" />
+                        <stop offset="50%" style="stop-color:#fe8222;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#fd931d;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <circle cx="16" cy="20" r="12" fill="url(#logoGradient)"/>
+                <circle cx="16" cy="20" r="6" fill="white"/>
+                <text x="36" y="24" font-family="Readex Pro, sans-serif" font-size="14" font-weight="600" fill="#1f2937">Ciclo Integrado</text>
+            </svg>
+        </div>
+        
+        <div id="municipio-logo-container" class="flex flex-col items-center justify-center border-b border-gray-200 px-4 py-4 bg-gray-50">
+            <div id="municipio-logo" class="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-xl shadow-lg"></div>
+            <p id="municipio-nome" class="mt-2 text-xs font-semibold text-gray-700 text-center">Carregando...</p>
+        </div>
+        
+        <nav class="p-4 space-y-1">
+            <a href="ciclo-dashboard.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span class="font-medium">Dashboard</span>
+            </a>
+            <a href="ciclo-contratos.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="file-text" class="w-5 h-5"></i>
+                <span class="font-medium">Contratos</span>
+            </a>
+            <a href="ciclo-cadastro.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="file-plus" class="w-5 h-5"></i>
+                <span class="font-medium">Novo Contrato</span>
+            </a>
+            <a href="ciclo-relatorios.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-white" style="background: linear-gradient(135deg, #ff5a2e 0%, #fe8222 50%, #fd931d 100%);">
+                <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                <span class="font-medium">Relatórios</span>
+            </a>
+            <a href="ciclo-notificacoes.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="bell" class="w-5 h-5"></i>
+                <span class="font-medium">Notificações</span>
+            </a>
+            
+            <div class="pt-4 border-t border-gray-200 mt-4 space-y-1">
+                <a href="ciclo-usuarios.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                    <i data-lucide="users" class="w-5 h-5"></i>
+                    <span class="font-medium">Usuários</span>
+                </a>
+                <a href="ciclo-configuracoes.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                    <span class="font-medium">Configurações</span>
+                </a>
+                <a href="#" onclick="logout()" class="flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                    <span class="font-medium">Sair</span>
+                </a>
+            </div>
+        </nav>
+    </aside>
+    
+    <main class="lg:ml-64 min-h-screen">
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-20">
+            <div class="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
+                <button id="menuBtn" class="lg:hidden p-2 rounded-lg hover:bg-gray-100">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <h2 class="text-lg font-bold text-gray-900">Relatórios</h2>
+                <div></div>
+            </div>
+        </header>
+        
+        <div class="p-4 sm:p-6 lg:p-8">
+            <div class="max-w-6xl mx-auto space-y-6">
+                <!-- Quick Reports -->
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Relatórios Rápidos</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <button onclick="generateReport('contratos-ativos')" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow text-left">
+                            <div class="w-12 h-12 rounded-lg gradient-primary flex items-center justify-center mb-4">
+                                <i data-lucide="file-check" class="w-6 h-6 text-white"></i>
+                            </div>
+                            <h4 class="text-base font-bold text-gray-900 mb-1">Contratos Ativos</h4>
+                            <p class="text-sm text-gray-600">Lista de todos os contratos em vigência</p>
+                        </button>
+                        
+                        <button onclick="generateReport('vencimentos')" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow text-left">
+                            <div class="w-12 h-12 rounded-lg bg-yellow-500 flex items-center justify-center mb-4">
+                                <i data-lucide="calendar-clock" class="w-6 h-6 text-white"></i>
+                            </div>
+                            <h4 class="text-base font-bold text-gray-900 mb-1">Vencimentos</h4>
+                            <p class="text-sm text-gray-600">Contratos vencendo nos próximos 30 dias</p>
+                        </button>
+                        
+                        <button onclick="generateReport('execucao-orcamentaria')" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow text-left">
+                            <div class="w-12 h-12 rounded-lg bg-green-500 flex items-center justify-center mb-4">
+                                <i data-lucide="trending-up" class="w-6 h-6 text-white"></i>
+                            </div>
+                            <h4 class="text-base font-bold text-gray-900 mb-1">Execução Orçamentária</h4>
+                            <p class="text-sm text-gray-600">Análise de valores executados</p>
+                        </button>
+                        
+                        <button onclick="generateReport('por-secretaria')" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow text-left">
+                            <div class="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center mb-4">
+                                <i data-lucide="building" class="w-6 h-6 text-white"></i>
+                            </div>
+                            <h4 class="text-base font-bold text-gray-900 mb-1">Por Secretaria</h4>
+                            <p class="text-sm text-gray-600">Contratos agrupados por secretaria</p>
+                        </button>
+                        
+                        <button onclick="generateReport('fiscalizacao')" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow text-left">
+                            <div class="w-12 h-12 rounded-lg bg-purple-500 flex items-center justify-center mb-4">
+                                <i data-lucide="shield-check" class="w-6 h-6 text-white"></i>
+                            </div>
+                            <h4 class="text-base font-bold text-gray-900 mb-1">Fiscalização</h4>
+                            <p class="text-sm text-gray-600">Relatório de atividades dos fiscais</p>
+                        </button>
+                        
+                        <button onclick="generateReport('historico')" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow text-left">
+                            <div class="w-12 h-12 rounded-lg bg-red-500 flex items-center justify-center mb-4">
+                                <i data-lucide="history" class="w-6 h-6 text-white"></i>
+                            </div>
+                            <h4 class="text-base font-bold text-gray-900 mb-1">Histórico</h4>
+                            <p class="text-sm text-gray-600">Contratos finalizados e arquivados</p>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Custom Report -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Relatório Personalizado</h3>
+                    
+                    <form id="customReportForm" class="space-y-4">
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Tipo de Relatório</label>
+                                <select name="tipo" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                    <option value="geral">Relatório Geral</option>
+                                    <option value="financeiro">Relatório Financeiro</option>
+                                    <option value="operacional">Relatório Operacional</option>
+                                    <option value="analitico">Relatório Analítico</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Período</label>
+                                <select name="periodo" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                    <option value="mes-atual">Mês Atual</option>
+                                    <option value="trimestre">Último Trimestre</option>
+                                    <option value="semestre">Último Semestre</option>
+                                    <option value="ano">Ano Atual</option>
+                                    <option value="custom">Personalizado</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                                <select name="status" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                    <option value="todos">Todos</option>
+                                    <option value="ativo">Ativos</option>
+                                    <option value="pendente">Pendentes</option>
+                                    <option value="vencido">Vencidos</option>
+                                    <option value="finalizado">Finalizados</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Secretaria</label>
+                                <select name="secretaria" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                    <option value="">Todas</option>
+                                    <option value="obras">Secretaria de Obras</option>
+                                    <option value="educacao">Secretaria de Educação</option>
+                                    <option value="saude">Secretaria de Saúde</option>
+                                    <option value="administracao">Secretaria de Administração</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Modalidade</label>
+                                <select name="modalidade" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                    <option value="">Todas</option>
+                                    <option value="pregao">Pregão</option>
+                                    <option value="concorrencia">Concorrência</option>
+                                    <option value="dispensa">Dispensa</option>
+                                    <option value="inexigibilidade">Inexigibilidade</option>
+                                </select>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Formato</label>
+                                <select name="formato" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                    <option value="pdf">PDF</option>
+                                    <option value="excel">Excel (XLSX)</option>
+                                    <option value="csv">CSV</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Data Inicial</label>
+                                <input type="date" name="data_inicio" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">Data Final</label>
+                                <input type="date" name="data_fim" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                            </div>
+                        </div>
+                        
+                        <div class="flex items-center gap-3 pt-4 border-t border-gray-200">
+                            <button type="submit" class="px-6 py-2 rounded-lg text-white font-medium gradient-primary hover:opacity-90 transition-opacity flex items-center gap-2">
+                                <i data-lucide="file-down" class="w-4 h-4"></i>
+                                Gerar Relatório
+                            </button>
+                            <button type="button" onclick="previewReport()" class="px-6 py-2 rounded-lg text-gray-700 font-medium border border-gray-300 hover:bg-gray-50 transition-colors flex items-center gap-2">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                                Visualizar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                
+                <!-- Recent Reports -->
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Relatórios Recentes</h3>
+                    
+                    <div class="space-y-3">
+                        <div class="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center">
+                                    <i data-lucide="file-text" class="w-5 h-5 text-red-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">Relatório de Contratos Ativos - Dezembro 2024</p>
+                                    <p class="text-xs text-gray-500">Gerado em 10/12/2024 às 14:30 • PDF • 2.3 MB</p>
+                                </div>
+                            </div>
+                            <button class="p-2 hover:bg-gray-100 rounded-lg">
+                                <i data-lucide="download" class="w-5 h-5 text-gray-600"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                                    <i data-lucide="file-spreadsheet" class="w-5 h-5 text-green-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">Execução Orçamentária - 4º Trimestre</p>
+                                    <p class="text-xs text-gray-500">Gerado em 08/12/2024 às 10:15 • Excel • 1.8 MB</p>
+                                </div>
+                            </div>
+                            <button class="p-2 hover:bg-gray-100 rounded-lg">
+                                <i data-lucide="download" class="w-5 h-5 text-gray-600"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
+                                    <i data-lucide="file-text" class="w-5 h-5 text-blue-600"></i>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-gray-900">Relatório de Fiscalização - Novembro 2024</p>
+                                    <p class="text-xs text-gray-500">Gerado em 05/12/2024 às 16:45 • PDF • 1.5 MB</p>
+                                </div>
+                            </div>
+                            <button class="p-2 hover:bg-gray-100 rounded-lg">
+                                <i data-lucide="download" class="w-5 h-5 text-gray-600"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        lucide.createIcons();
+        
+        function loadMunicipioInfo() {
+            try {
+                const user = API.getCurrentUser();
+                if (user && user.municipio_nome) {
+                    const palavras = user.municipio_nome.split(' ').filter(p => p.length > 0);
+                    const iniciais = palavras.map(palavra => palavra[0].toUpperCase()).join('').substring(0, 2);
+                    
+                    const municipioLogoEl = document.getElementById('municipio-logo');
+                    const municipioNomeEl = document.getElementById('municipio-nome');
+                    
+                    if (municipioLogoEl) {
+                        municipioLogoEl.textContent = iniciais;
+                    }
+                    if (municipioNomeEl) {
+                        municipioNomeEl.textContent = user.municipio_nome;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar informações do município:', error);
+            }
+        }
+        
+        loadMunicipioInfo();
+        
+        const menuBtn = document.getElementById('menuBtn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        
+        menuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('sidebar-hidden');
+            overlay.classList.toggle('hidden');
+        });
+        
+        overlay.addEventListener('click', () => {
+            sidebar.classList.add('sidebar-hidden');
+            overlay.classList.add('hidden');
+        });
+        
+        function logout() {
+            if (confirm('Deseja realmente sair?')) {
+                API.logout();
+                window.location.href = '../pages/login.html';
+            }
+        }
+        
+        function generateReport(type) {
+            alert(`Gerando relatório: ${type}...`);
+            console.log('Generating report:', type);
+        }
+        
+        function previewReport() {
+            alert('Visualização do relatório será aberta em nova janela');
+        }
+        
+        document.getElementById('customReportForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            console.log('Custom report:', Object.fromEntries(formData));
+            alert('Gerando relatório personalizado...');
+        });
+    </script>
+</body>
+</html>

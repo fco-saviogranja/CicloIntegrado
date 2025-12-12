@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contratos - Ciclo Integrado</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        setTimeout(() => {
+            if (typeof tailwind !== 'undefined') {
+                tailwind.suppressWarnings = true;
+            }
+        }, 100);
+    </script>
+    
+    <!-- Google Fonts - Readex Pro -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- API Module -->
+    <script src="../js/api.js"></script>
+    
+    <style>
+        :root {
+            --primary: #ff5a2e;
+            --primary-medium: #fe8222;
+            --primary-light: #fd931d;
+        }
+        
+        body {
+            font-family: 'Readex Pro', sans-serif;
+        }
+        
+        .gradient-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-medium) 50%, var(--primary-light) 100%);
+        }
+        
+        .sidebar-hidden {
+            transform: translateX(-100%);
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Overlay para mobile -->
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden"></div>
+    
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-40 transition-transform duration-300 lg:translate-x-0 sidebar-hidden">
+        <!-- Logo Ciclo Integrado (Menor) -->
+        <div class="flex items-center justify-center border-b border-gray-200 px-4 py-3">
+            <svg width="120" height="30" viewBox="0 0 160 40" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#ff5a2e;stop-opacity:1" />
+                        <stop offset="50%" style="stop-color:#fe8222;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#fd931d;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <circle cx="16" cy="20" r="12" fill="url(#logoGradient)"/>
+                <circle cx="16" cy="20" r="6" fill="white"/>
+                <text x="36" y="24" font-family="Readex Pro, sans-serif" font-size="14" font-weight="600" fill="#1f2937">Ciclo Integrado</text>
+            </svg>
+        </div>
+        
+        <!-- Logo do Município -->
+        <div id="municipio-logo-container" class="flex flex-col items-center justify-center border-b border-gray-200 px-4 py-4 bg-gray-50">
+            <div id="municipio-logo" class="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">
+            </div>
+            <p id="municipio-nome" class="mt-2 text-xs font-semibold text-gray-700 text-center">Carregando...</p>
+        </div>
+        
+        <!-- Navigation -->
+        <nav class="p-4 space-y-1">
+            <a href="ciclo-dashboard.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span class="font-medium">Dashboard</span>
+            </a>
+            <a href="ciclo-contratos.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-white" style="background: linear-gradient(135deg, #ff5a2e 0%, #fe8222 50%, #fd931d 100%);">
+                <i data-lucide="file-text" class="w-5 h-5"></i>
+                <span class="font-medium">Contratos</span>
+            </a>
+            <a href="ciclo-cadastro.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="file-plus" class="w-5 h-5"></i>
+                <span class="font-medium">Novo Contrato</span>
+            </a>
+            <a href="ciclo-relatorios.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                <span class="font-medium">Relatórios</span>
+            </a>
+            <a href="ciclo-notificacoes.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="bell" class="w-5 h-5"></i>
+                <span class="font-medium">Notificações</span>
+                <span class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">5</span>
+            </a>
+            
+            <div class="pt-4 border-t border-gray-200 mt-4 space-y-1">
+                <a href="ciclo-usuarios.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                    <i data-lucide="users" class="w-5 h-5"></i>
+                    <span class="font-medium">Usuários</span>
+                </a>
+                <a href="ciclo-configuracoes.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                    <span class="font-medium">Configurações</span>
+                </a>
+                <a href="#" onclick="logout()" class="flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                    <span class="font-medium">Sair</span>
+                </a>
+            </div>
+        </nav>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="lg:ml-64 min-h-screen">
+        <!-- Header -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-20">
+            <div class="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
+                <!-- Mobile Menu Button -->
+                <button id="menuBtn" class="lg:hidden p-2 rounded-lg hover:bg-gray-100">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                
+                <!-- Page Title -->
+                <h2 class="text-lg font-bold text-gray-900 hidden sm:block">Gestão de Contratos</h2>
+                
+                <!-- Actions & User -->
+                <div class="flex items-center gap-3">
+                    <a href="ciclo-cadastro.html" class="px-4 py-2 rounded-lg text-white font-medium gradient-primary hover:opacity-90 transition-opacity flex items-center gap-2">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Novo Contrato</span>
+                    </a>
+                    <button class="p-2 rounded-lg hover:bg-gray-100 relative">
+                        <i data-lucide="bell" class="w-5 h-5"></i>
+                        <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                    </button>
+                    <div class="flex items-center gap-3">
+                        <img id="userPhoto" src="" alt="Foto" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200" style="display:none;">
+                        <div id="userPhotoPlaceholder" class="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white font-bold">
+                            <span id="userInitials">?</span>
+                        </div>
+                        <div class="hidden sm:block text-right">
+                            <p class="text-sm font-medium text-gray-900" id="userName">Carregando...</p>
+                            <p class="text-xs text-gray-500" id="userRole">...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Content -->
+        <div class="p-4 sm:p-6 lg:p-8">
+            <!-- Filters Card -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-lg font-bold text-gray-900">Filtros</h3>
+                    <button onclick="toggleFilters()" class="text-sm font-medium" style="color: var(--primary);">
+                        <span id="filterToggleText">Expandir</span>
+                    </button>
+                </div>
+                
+                <div id="filterContent" class="hidden">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                        <!-- Busca -->
+                        <div class="lg:col-span-2">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Buscar</label>
+                            <div class="relative">
+                                <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400"></i>
+                                <input type="text" id="searchInput" placeholder="Número, objeto ou contratada..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                            </div>
+                        </div>
+                        
+                        <!-- Status -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                            <select id="statusFilter" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                <option value="">Todos</option>
+                                <option value="ativo">Ativo</option>
+                                <option value="pendente">Pendente</option>
+                                <option value="vencido">Vencido</option>
+                                <option value="suspenso">Suspenso</option>
+                                <option value="finalizado">Finalizado</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Período -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Período</label>
+                            <select id="periodFilter" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                <option value="">Todos</option>
+                                <option value="30">Próximos 30 dias</option>
+                                <option value="60">Próximos 60 dias</option>
+                                <option value="90">Próximos 90 dias</option>
+                                <option value="vencidos">Vencidos</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Fiscal -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Fiscal</label>
+                            <select id="fiscalFilter" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                <option value="">Todos</option>
+                                <option value="1">João Silva</option>
+                                <option value="2">Maria Santos</option>
+                                <option value="3">Pedro Oliveira</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Gestor -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Gestor</label>
+                            <select id="gestorFilter" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                                <option value="">Todos</option>
+                                <option value="1">Ana Costa</option>
+                                <option value="2">Carlos Alves</option>
+                                <option value="3">Fernanda Lima</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Valor Mínimo -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Valor Mínimo</label>
+                            <input type="number" id="minValueFilter" placeholder="R$ 0,00" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                        </div>
+                        
+                        <!-- Valor Máximo -->
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-2">Valor Máximo</label>
+                            <input type="number" id="maxValueFilter" placeholder="R$ 0,00" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                        </div>
+                    </div>
+                    
+                    <div class="flex items-center gap-3 mt-4 pt-4 border-t border-gray-200">
+                        <button onclick="applyFilters()" class="px-6 py-2 rounded-lg text-white font-medium gradient-primary hover:opacity-90 transition-opacity">
+                            Aplicar Filtros
+                        </button>
+                        <button onclick="clearFilters()" class="px-6 py-2 rounded-lg text-gray-700 font-medium border border-gray-300 hover:bg-gray-50 transition-colors">
+                            Limpar
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Stats -->
+            <div class="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
+                <button onclick="filterByStatus('all')" class="p-4 rounded-lg border-2 border-gray-200 hover:border-orange-500 transition-colors text-center">
+                    <p class="text-2xl font-bold text-gray-900">156</p>
+                    <p class="text-sm text-gray-600 mt-1">Todos</p>
+                </button>
+                <button onclick="filterByStatus('ativo')" class="p-4 rounded-lg border-2 border-gray-200 hover:border-green-500 transition-colors text-center">
+                    <p class="text-2xl font-bold text-green-600">124</p>
+                    <p class="text-sm text-gray-600 mt-1">Ativos</p>
+                </button>
+                <button onclick="filterByStatus('pendente')" class="p-4 rounded-lg border-2 border-gray-200 hover:border-yellow-500 transition-colors text-center">
+                    <p class="text-2xl font-bold text-yellow-600">18</p>
+                    <p class="text-sm text-gray-600 mt-1">Pendentes</p>
+                </button>
+                <button onclick="filterByStatus('vencido')" class="p-4 rounded-lg border-2 border-gray-200 hover:border-red-500 transition-colors text-center">
+                    <p class="text-2xl font-bold text-red-600">8</p>
+                    <p class="text-sm text-gray-600 mt-1">Vencidos</p>
+                </button>
+                <button onclick="filterByStatus('suspenso')" class="p-4 rounded-lg border-2 border-gray-200 hover:border-gray-500 transition-colors text-center">
+                    <p class="text-2xl font-bold text-gray-600">6</p>
+                    <p class="text-sm text-gray-600 mt-1">Suspensos</p>
+                </button>
+            </div>
+            
+            <!-- Contracts Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="p-6 border-b border-gray-200 flex items-center justify-between">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900">Lista de Contratos</h3>
+                        <p class="text-sm text-gray-600 mt-1">156 contratos encontrados</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button class="p-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+                            <i data-lucide="download" class="w-4 h-4"></i>
+                        </button>
+                        <button class="p-2 rounded-lg border border-gray-300 hover:bg-gray-50">
+                            <i data-lucide="printer" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="px-6 py-3 text-left">
+                                    <input type="checkbox" class="rounded border-gray-300">
+                                </th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Objeto</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contratada</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Vigência</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200" id="contractsTable">
+                            <!-- Contracts will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Pagination -->
+                <div class="px-6 py-4 border-t border-gray-200 flex items-center justify-between">
+                    <div class="text-sm text-gray-600">
+                        Mostrando <span class="font-medium">1-10</span> de <span class="font-medium">156</span> resultados
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button class="px-3 py-1 rounded-lg border border-gray-300 hover:bg-gray-50 text-sm font-medium disabled:opacity-50" disabled>
+                            Anterior
+                        </button>
+                        <button class="px-3 py-1 rounded-lg border border-gray-300 bg-orange-500 text-white text-sm font-medium">1</button>
+                        <button class="px-3 py-1 rounded-lg border border-gray-300 hover:bg-gray-50 text-sm font-medium">2</button>
+                        <button class="px-3 py-1 rounded-lg border border-gray-300 hover:bg-gray-50 text-sm font-medium">3</button>
+                        <button class="px-3 py-1 rounded-lg border border-gray-300 hover:bg-gray-50 text-sm font-medium">
+                            Próximo
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
+        // Carregar informações do município
+        function loadMunicipioInfo() {
+            const user = API.getCurrentUser();
+            if (user) {
+                const municipioLogoEl = document.getElementById('municipio-logo');
+                const municipioNomeEl = document.getElementById('municipio-nome');
+                
+                if (user.municipio_nome) {
+                    const iniciais = user.municipio_nome
+                        .split(' ')
+                        .map(palavra => palavra[0])
+                        .join('')
+                        .toUpperCase()
+                        .substring(0, 2);
+                    
+                    municipioLogoEl.textContent = iniciais;
+                    municipioNomeEl.textContent = user.municipio_nome;
+                } else {
+                    municipioLogoEl.textContent = 'CI';
+                    municipioNomeEl.textContent = 'Ciclo Integrado';
+                }
+            }
+        }
+        
+        // Carregar ao iniciar
+        loadMunicipioInfo();
+        
+        // Mobile menu toggle
+        const menuBtn = document.getElementById('menuBtn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        
+        menuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('sidebar-hidden');
+            overlay.classList.toggle('hidden');
+        });
+        
+        overlay.addEventListener('click', () => {
+            sidebar.classList.add('sidebar-hidden');
+            overlay.classList.add('hidden');
+        });
+        
+        // Toggle filters
+        function toggleFilters() {
+            const content = document.getElementById('filterContent');
+            const text = document.getElementById('filterToggleText');
+            content.classList.toggle('hidden');
+            text.textContent = content.classList.contains('hidden') ? 'Expandir' : 'Recolher';
+        }
+        
+        // Filter functions
+        function filterByStatus(status) {
+            console.log('Filtering by status:', status);
+            // TODO: Implement filter logic
+        }
+        
+        function applyFilters() {
+            console.log('Applying filters...');
+            loadContracts();
+        }
+        
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('periodFilter').value = '';
+            document.getElementById('fiscalFilter').value = '';
+            document.getElementById('gestorFilter').value = '';
+            document.getElementById('minValueFilter').value = '';
+            document.getElementById('maxValueFilter').value = '';
+            loadContracts();
+        }
+        
+        function logout() {
+            if (confirm('Deseja realmente sair?')) {
+                API.logout();
+                window.location.href = '../pages/login.html';
+            }
+        }
+        
+        // Load contracts
+        function loadContracts() {
+            const contracts = [
+                { id: 1, numero: '001/2024', objeto: 'Serviços de Limpeza Urbana', contratada: 'Clean Services Ltda', valor: 250000, vigencia: '31/12/2024', status: 'ativo' },
+                { id: 2, numero: '002/2024', objeto: 'Manutenção de Vias Públicas', contratada: 'Construções ABC', valor: 180000, vigencia: '30/06/2025', status: 'pendente' },
+                { id: 3, numero: '003/2024', objeto: 'Fornecimento de Merenda Escolar', contratada: 'Alimentos Nutritivos SA', valor: 320000, vigencia: '31/12/2024', status: 'ativo' },
+                { id: 4, numero: '004/2024', objeto: 'Coleta de Lixo', contratada: 'EcoLimpa Ambiental', valor: 420000, vigencia: '15/03/2025', status: 'ativo' },
+                { id: 5, numero: '005/2024', objeto: 'Reformas de Escolas', contratada: 'Construtor Moderno Ltda', valor: 580000, vigencia: '10/11/2024', status: 'vencido' },
+                { id: 6, numero: '006/2024', objeto: 'Iluminação Pública', contratada: 'LuzTech Soluções', valor: 290000, vigencia: '31/12/2025', status: 'ativo' },
+                { id: 7, numero: '007/2024', objeto: 'Transporte Escolar', contratada: 'Viação Segura', valor: 380000, vigencia: '31/12/2024', status: 'ativo' },
+                { id: 8, numero: '008/2024', objeto: 'Fornecimento de Medicamentos', contratada: 'FarmaDistribuidora', valor: 450000, vigencia: '30/06/2025', status: 'suspenso' },
+                { id: 9, numero: '009/2024', objeto: 'Manutenção de Praças', contratada: 'Verde Jardins', valor: 150000, vigencia: '31/03/2025', status: 'pendente' },
+                { id: 10, numero: '010/2024', objeto: 'Segurança Patrimonial', contratada: 'Vigilância Total', valor: 280000, vigencia: '31/12/2024', status: 'ativo' }
+            ];
+            
+            const tbody = document.getElementById('contractsTable');
+            tbody.innerHTML = contracts.map(contract => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                        <input type="checkbox" class="rounded border-gray-300">
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="text-sm font-medium text-gray-900">${contract.numero}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-sm text-gray-900">${contract.objeto}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <span class="text-sm text-gray-600">${contract.contratada}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="text-sm font-medium text-gray-900">R$ ${contract.valor.toLocaleString('pt-BR')}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        <span class="text-sm text-gray-600">${contract.vigencia}</span>
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap">
+                        ${getStatusBadge(contract.status)}
+                    </td>
+                    <td class="px-6 py-4 whitespace-nowrap text-sm">
+                        <div class="flex items-center gap-2">
+                            <button onclick="viewContract(${contract.id})" class="p-1 hover:bg-gray-100 rounded" title="Visualizar">
+                                <i data-lucide="eye" class="w-4 h-4 text-blue-600"></i>
+                            </button>
+                            <button onclick="editContract(${contract.id})" class="p-1 hover:bg-gray-100 rounded" title="Editar">
+                                <i data-lucide="edit" class="w-4 h-4 text-gray-600"></i>
+                            </button>
+                            <button onclick="deleteContract(${contract.id})" class="p-1 hover:bg-gray-100 rounded" title="Excluir">
+                                <i data-lucide="trash-2" class="w-4 h-4 text-red-600"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+            
+            lucide.createIcons();
+        }
+        
+        function getStatusBadge(status) {
+            const badges = {
+                'ativo': '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Ativo</span>',
+                'pendente': '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Pendente</span>',
+                'vencido': '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 text-red-800">Vencido</span>',
+                'suspenso': '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800">Suspenso</span>',
+                'finalizado': '<span class="px-2 py-1 text-xs font-semibold rounded-full bg-blue-100 text-blue-800">Finalizado</span>'
+            };
+            return badges[status] || badges['pendente'];
+        }
+        
+        function viewContract(id) {
+            window.location.href = `ciclo-detalhes.html?id=${id}`;
+        }
+        
+        function editContract(id) {
+            window.location.href = `ciclo-cadastro.html?id=${id}`;
+        }
+        
+        function deleteContract(id) {
+            if (confirm('Deseja realmente excluir este contrato?')) {
+                console.log('Deleting contract:', id);
+                // TODO: Implement delete logic
+            }
+        }
+        
+        // Initialize
+        loadContracts();
+    </script>
+</body>
+</html>

@@ -7,6 +7,13 @@
     
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        setTimeout(() => {
+            if (typeof tailwind !== 'undefined') {
+                tailwind.suppressWarnings = true;
+            }
+        }, 100);
+    </script>
     
     <!-- Google Fonts - Readex Pro -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -16,10 +23,8 @@
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
     
-    <!-- Recharts -->
-    <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/recharts@2/dist/Recharts.js"></script>
+    <!-- Chart.js para gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
     
     <!-- API Module -->
     <script src="../js/api.js"></script>
@@ -68,9 +73,9 @@
     
     <!-- Sidebar -->
     <aside id="sidebar" class="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-40 transition-transform duration-300 lg:translate-x-0 sidebar-hidden">
-        <!-- Logo -->
-        <div class="h-16 flex items-center justify-center border-b border-gray-200 px-6">
-            <svg width="160" height="40" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg">
+        <!-- Logo Ciclo Integrado (Menor) -->
+        <div class="flex items-center justify-center border-b border-gray-200 px-4 py-3">
+            <svg width="120" height="30" viewBox="0 0 160 40" xmlns="http://www.w3.org/2000/svg">
                 <defs>
                     <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
                         <stop offset="0%" style="stop-color:#ff5a2e;stop-opacity:1" />
@@ -78,10 +83,18 @@
                         <stop offset="100%" style="stop-color:#fd931d;stop-opacity:1" />
                     </linearGradient>
                 </defs>
-                <circle cx="20" cy="25" r="15" fill="url(#logoGradient)"/>
-                <circle cx="20" cy="25" r="8" fill="white"/>
-                <text x="45" y="30" font-family="Readex Pro, sans-serif" font-size="18" font-weight="600" fill="#1f2937">Ciclo Integrado</text>
+                <circle cx="16" cy="20" r="12" fill="url(#logoGradient)"/>
+                <circle cx="16" cy="20" r="6" fill="white"/>
+                <text x="36" y="24" font-family="Readex Pro, sans-serif" font-size="14" font-weight="600" fill="#1f2937">Ciclo Integrado</text>
             </svg>
+        </div>
+        
+        <!-- Logo do Município -->
+        <div id="municipio-logo-container" class="flex flex-col items-center justify-center border-b border-gray-200 px-4 py-4 bg-gray-50">
+            <div id="municipio-logo" class="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                <!-- Logo será carregada dinamicamente -->
+            </div>
+            <p id="municipio-nome" class="mt-2 text-xs font-semibold text-gray-700 text-center">Carregando...</p>
         </div>
         
         <!-- Navigation -->
@@ -150,12 +163,13 @@
                         <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                     </button>
                     <div class="flex items-center gap-3">
+                        <img id="userPhoto" src="" alt="Foto" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200" style="display:none;">
+                        <div id="userPhotoPlaceholder" class="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white font-bold">
+                            <span id="userInitials">?</span>
+                        </div>
                         <div class="hidden sm:block text-right">
                             <p class="text-sm font-medium text-gray-900" id="userName">Carregando...</p>
                             <p class="text-xs text-gray-500" id="userRole">...</p>
-                        </div>
-                        <div class="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white font-bold">
-                            <span id="userInitials">?</span>
                         </div>
                     </div>
                 </div>
@@ -327,7 +341,17 @@
             const user = API.getCurrentUser();
             if (user) {
                 document.getElementById('userName').textContent = user.nome || user.email;
-                document.getElementById('userRole').textContent = getRoleName(user.role);
+                
+                // Role name with secretaria/sigla
+                const roleMap = {
+                    'admin_municipal': 'Administrador Municipal',
+                    'gestor': 'Gestor de Contratos',
+                    'fiscal': 'Fiscal de Contratos',
+                    'admin_master': 'Admin Master'
+                };
+                const roleText = roleMap[user.role] || user.role;
+                const secretaria = user.secretaria_sigla || user.secretaria_nome || '';
+                document.getElementById('userRole').textContent = secretaria ? `${roleText} (${secretaria})` : roleText;
                 
                 const initials = (user.nome || user.email)
                     .split(' ')
@@ -336,6 +360,39 @@
                     .toUpperCase()
                     .substring(0, 2);
                 document.getElementById('userInitials').textContent = initials;
+                
+                // Load user photo if available
+                if (user.foto_url) {
+                    document.getElementById('userPhoto').src = user.foto_url;
+                    document.getElementById('userPhoto').style.display = 'block';
+                    document.getElementById('userPhotoPlaceholder').style.display = 'none';
+                }
+                
+                // Carregar logo e nome do município
+                loadMunicipioInfo(user);
+            }
+        }
+        
+        // Carregar informações do município
+        function loadMunicipioInfo(user) {
+            const municipioLogoEl = document.getElementById('municipio-logo');
+            const municipioNomeEl = document.getElementById('municipio-nome');
+            
+            if (user.municipio_nome) {
+                // Se tiver nome do município, exibir iniciais
+                const iniciais = user.municipio_nome
+                    .split(' ')
+                    .map(palavra => palavra[0])
+                    .join('')
+                    .toUpperCase()
+                    .substring(0, 2);
+                
+                municipioLogoEl.textContent = iniciais;
+                municipioNomeEl.textContent = user.municipio_nome;
+            } else {
+                // Fallback para usuários sem município definido
+                municipioLogoEl.textContent = 'CI';
+                municipioNomeEl.textContent = 'Ciclo Integrado';
             }
         }
         

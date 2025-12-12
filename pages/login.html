@@ -5,6 +5,12 @@
     <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
     <title>Tela de Login - Ciclo Integrado</title>
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <script>
+        // Suprimir aviso do Tailwind CDN em desenvolvimento
+        if (typeof tailwind !== 'undefined') {
+            tailwind.suppressWarnings = true;
+        }
+    </script>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
         <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@200..700&display=swap" rel="stylesheet"/>
@@ -246,9 +252,25 @@ document.addEventListener('DOMContentLoaded', async function() {
             return;
         }
 
-        if (selectedEstado && !municipioId) {
-            alert('Selecione um município válido para o estado escolhido.');
-            return;
+        // Validação específica: admin_master não precisa de estado/cidade
+        // Mas todos os outros usuários DEVEM selecionar estado e município
+        const isAdminMaster = email.toLowerCase() === 'admin@ciclointegrado.online';
+        
+        if (!isAdminMaster) {
+            // Usuários municipais DEVEM selecionar estado e município
+            if (!selectedEstado) {
+                alert('Por favor, selecione seu estado.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span class="truncate">Entrar</span>';
+                return;
+            }
+            
+            if (!municipioId) {
+                alert('Por favor, selecione seu município.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<span class="truncate">Entrar</span>';
+                return;
+            }
         }
         
         try {
@@ -264,10 +286,10 @@ document.addEventListener('DOMContentLoaded', async function() {
                 // Redirecionar baseado no tipo de usuário
                 if (user.role === 'admin_master') {
                     // Admin Master vai para dashboard administrativo
-                    window.location.href = 'https://ciclointegrado.online/pages/admin-dashboard.html';
+                    window.location.href = '/pages/admin-dashboard.html';
                 } else {
                     // Admins Municipais, Gestores e Fiscais vão para o sistema principal
-                    window.location.href = '/pages/dashboard.html';
+                    window.location.href = '/pages/ciclo-dashboard.html';
                 }
             } else {
                 alert(response.message || 'Erro ao fazer login. Verifique suas credenciais.');
@@ -279,12 +301,31 @@ document.addEventListener('DOMContentLoaded', async function() {
             
             // Extrair mensagem de erro corretamente
             let errorMsg = 'Erro ao fazer login';
-            if (error.message && typeof error.message === 'string') {
+            
+            if (error instanceof Error && error.message) {
                 errorMsg = error.message;
+                
+                // Tentar parsear se for JSON string
+                try {
+                    const jsonError = JSON.parse(errorMsg);
+                    if (jsonError.message) {
+                        errorMsg = jsonError.message;
+                    } else if (jsonError.error) {
+                        errorMsg = jsonError.error;
+                    }
+                } catch (e) {
+                    // Não é JSON, usar a string como está
+                }
             } else if (typeof error === 'string') {
                 errorMsg = error;
-            } else if (error.error && typeof error.error === 'string') {
-                errorMsg = error.error;
+            } else if (error && error.error) {
+                errorMsg = typeof error.error === 'string' ? error.error : JSON.stringify(error.error);
+            } else if (error) {
+                try {
+                    errorMsg = JSON.stringify(error);
+                } catch (e) {
+                    errorMsg = 'Erro desconhecido ao fazer login';
+                }
             }
             
             alert(errorMsg);

@@ -522,11 +522,20 @@ app.post('/auth/login', async (req, res) => {
     const userData = snapshot.docs[0].data();
     const userId = snapshot.docs[0].id;
 
-    // Validar senha usando bcrypt
+    // Validar senha usando bcrypt (ou comparação direta para senhas antigas em texto plano)
     console.log('Comparando senhas...');
     console.log('Password fornecida:', password);
     console.log('Password hash:', userData.password);
-    const passwordMatch = await bcrypt.compare(password, userData.password);
+    
+    // Tentar bcrypt.compare primeiro
+    let passwordMatch = await bcrypt.compare(password, userData.password);
+    
+    // Se falhar, tentar comparação direta (para senhas antigas em texto plano)
+    if (!passwordMatch && userData.password === password) {
+      passwordMatch = true;
+      console.log('Senha validada como texto plano (compatibilidade com dados antigos)');
+    }
+    
     console.log('Password match result:', passwordMatch);
     
     if (!passwordMatch) {
@@ -577,6 +586,141 @@ app.post('/auth/login', async (req, res) => {
       error: {
         code: 'LOGIN_ERROR',
         message: 'Erro ao fazer login'
+      }
+    });
+  }
+});
+
+/**
+ * POST /auth/reset-password-public
+ * Resetar senha via email (endpoint público para setup inicial)
+ * NOTA: Em produção, isso deve ser protegido com token de verificação por email
+ */
+app.post('/auth/reset-password-public', async (req, res) => {
+  try {
+    const { email, new_password } = req.body;
+
+    if (!email || !new_password) {
+      return res.status(400).json({
+        error: {
+          code: 'MISSING_FIELDS',
+          message: 'Email e nova senha são obrigatórios'
+        }
+      });
+    }
+
+    // Buscar usuário
+    const usersRef = db.collection('users');
+    const snapshot = await usersRef.where('email', '==', email).limit(1).get();
+
+    if (snapshot.empty) {
+      return res.status(404).json({
+        error: {
+          code: 'USER_NOT_FOUND',
+          message: 'Usuário não encontrado'
+        }
+      });
+    }
+
+    const userId = snapshot.docs[0].id;
+    const userData = snapshot.docs[0].data();
+
+    // Atualizar senha
+    await usersRef.doc(userId).update({
+      password: new_password,
+      password_updated_at: new Date().toISOString()
+    });
+
+    console.log('Senha resetada com sucesso para:', email);
+    res.json({
+      success: true,
+      message: 'Senha resetada com sucesso',
+      user_id: userId
+    });
+  } catch (error) {
+    console.error('Erro ao resetar senha:', error);
+    res.status(500).json({
+      error: {
+        code: 'RESET_ERROR',
+        message: 'Erro ao resetar senha'
+      }
+    });
+  }
+});
+
+/**
+ * POST /auth/create-admin-master
+ * Criar admin_master inicial (endpoint público para setup apenas)
+ * IMPORTANTE: Isso deve ser desabilitado após o setup inicial
+ */
+app.post('/auth/create-admin-master', async (req, res) => {
+  try {
+    const { email, password, name } = req.body;
+
+    if (!email || !password || !name) {
+      return res.status(400).json({
+        error: {
+          code: 'MISSING_FIELDS',
+          message: 'Email, senha e nome são obrigatórios'
+        }
+      });
+    }
+
+    // Verificar se já existe um admin_master
+    const existingAdmin = await db.collection('users')
+      .where('role', '==', 'admin_master')
+      .get();
+
+    if (!existingAdmin.empty) {
+      return res.status(409).json({
+        error: {
+          code: 'ADMIN_EXISTS',
+          message: 'Já existe um admin_master no sistema'
+        }
+      });
+    }
+
+    // Verificar se email já existe
+    const existingEmail = await db.collection('users')
+      .where('email', '==', email)
+      .get();
+
+    if (!existingEmail.empty) {
+      return res.status(409).json({
+        error: {
+          code: 'EMAIL_EXISTS',
+          message: 'Email já cadastrado no sistema'
+        }
+      });
+    }
+
+    // Criar admin_master
+    const adminData = {
+      email,
+      password,
+      name,
+      role: 'admin_master',
+      municipio_id: null,
+      municipio_nome: null,
+      status: 'active',
+      created_at: new Date().toISOString(),
+      last_login: null
+    };
+
+    const docRef = await db.collection('users').add(adminData);
+
+    console.log('Admin master criado com sucesso:', email);
+    res.status(201).json({
+      success: true,
+      message: 'Admin master criado com sucesso',
+      user_id: docRef.id
+    });
+  } catch (error) {
+    console.error('Erro ao criar admin_master:', error);
+    res.status(500).json({
+      error: {
+        code: 'CREATE_ERROR',
+        message: 'Erro ao criar admin_master'
       }
     });
   }
@@ -2853,6 +2997,9 @@ app.use((err, req, res, next) => {
 
 // Para Cloud Functions
 exports.cicloIntegradoAPI = app;
+
+// Para desenvolvimento local (functions-framework espera por "api")
+exports.api = app;
 
 // Para desenvolvimento local
 if (require.main === module) {

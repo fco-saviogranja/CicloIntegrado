@@ -100,12 +100,64 @@ function validateForm(form) {
     return isValid;
 }
 
+// Carregar informações do usuário no header
+function loadUserHeader() {
+    try {
+        const user = API.getCurrentUser();
+        if (!user) return;
+        
+        // Nome do usuário
+        const userNameEl = document.getElementById('userName');
+        if (userNameEl) {
+            userNameEl.textContent = user.nome || user.email;
+        }
+        
+        // Role com secretaria/sigla
+        const userRoleEl = document.getElementById('userRole');
+        if (userRoleEl) {
+            const roleMap = {
+                'admin_municipal': 'Administrador Municipal',
+                'gestor': 'Gestor de Contratos',
+                'fiscal': 'Fiscal de Contratos',
+                'admin_master': 'Admin Master'
+            };
+            const roleText = roleMap[user.role] || user.role;
+            const secretaria = user.secretaria_sigla || user.secretaria_nome || '';
+            userRoleEl.textContent = secretaria ? `${roleText} (${secretaria})` : roleText;
+        }
+        
+        // Iniciais
+        const userInitialsEl = document.getElementById('userInitials');
+        if (userInitialsEl) {
+            const initials = (user.nome || user.email)
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .toUpperCase()
+                .substring(0, 2);
+            userInitialsEl.textContent = initials;
+        }
+        
+        // Foto do usuário
+        const userPhotoEl = document.getElementById('userPhoto');
+        const userPhotoPlaceholderEl = document.getElementById('userPhotoPlaceholder');
+        if (user.foto_url && userPhotoEl && userPhotoPlaceholderEl) {
+            userPhotoEl.src = user.foto_url;
+            userPhotoEl.style.display = 'block';
+            userPhotoPlaceholderEl.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Erro ao carregar informações do usuário no header:', error);
+    }
+}
+
 // Inicializar na carga da página
 document.addEventListener('DOMContentLoaded', function() {
     initializeTheme();
     initPasswordToggle();
     initMobileNavigation();
     animateOnLoad();
+    loadUserHeader(); // Carregar info do usuário
     
     // Inicializar Lucide Icons
     if (window.LucideHelper && typeof window.LucideHelper.replaceMaterialIcons === 'function') {
@@ -134,5 +186,6 @@ window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e =
 window.cicloIntegrado = {
     toggleDarkMode,
     validateForm,
-    debounce
+    debounce,
+    loadUserHeader
 };

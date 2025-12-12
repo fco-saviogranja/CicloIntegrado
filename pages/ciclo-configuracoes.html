@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configurações - Ciclo Integrado</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="../js/config.js"></script>
+    <script src="../js/api.js"></script>
+    <style>
+        body { font-family: 'Readex Pro', sans-serif; }
+        .gradient-primary { background: linear-gradient(135deg, #ff5a2e 0%, #fe8222 50%, #fd931d 100%); }
+        @media (max-width: 1023px) {
+            .sidebar-hidden { transform: translateX(-100%); }
+        }
+        @media (min-width: 1024px) {
+            #sidebar { transform: translateX(0) !important; }
+            #overlay { display: none !important; }
+        }
+        .sidebar-hidden { transform: translateX(-100%); }
+        .tab-active { border-bottom: 2px solid #ff5a2e; color: #ff5a2e; font-weight: 600; }
+        .modal { display: none; }
+        .modal.active { display: flex; }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden"></div>
+    
+    <aside id="sidebar" class="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-40 transition-transform duration-300 lg:translate-x-0 sidebar-hidden">
+        <div class="flex items-center justify-center border-b border-gray-200 px-4 py-3">
+            <svg width="120" height="30" viewBox="0 0 160 40" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#ff5a2e;stop-opacity:1" />
+                        <stop offset="50%" style="stop-color:#fe8222;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#fd931d;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <circle cx="16" cy="20" r="12" fill="url(#logoGradient)"/>
+                <circle cx="16" cy="20" r="6" fill="white"/>
+                <text x="36" y="24" font-family="Readex Pro, sans-serif" font-size="14" font-weight="600" fill="#1f2937">Ciclo Integrado</text>
+            </svg>
+        </div>
+        
+        <div id="municipio-logo-container" class="flex flex-col items-center justify-center border-b border-gray-200 px-4 py-4 bg-gray-50">
+            <div id="municipio-logo" class="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-xl shadow-lg"></div>
+            <p id="municipio-nome" class="mt-2 text-xs font-semibold text-gray-700 text-center">Carregando...</p>
+        </div>
+        
+        <nav class="p-4 space-y-1">
+            <a href="ciclo-dashboard.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span class="font-medium">Dashboard</span>
+            </a>
+            <a href="ciclo-contratos.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="file-text" class="w-5 h-5"></i>
+                <span class="font-medium">Contratos</span>
+            </a>
+            <a href="ciclo-cadastro.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="file-plus" class="w-5 h-5"></i>
+                <span class="font-medium">Novo Contrato</span>
+            </a>
+            <a href="ciclo-relatorios.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                <span class="font-medium">Relatórios</span>
+            </a>
+            <a href="ciclo-notificacoes.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="bell" class="w-5 h-5"></i>
+                <span class="font-medium">Notificações</span>
+            </a>
+            
+            <div class="pt-4 border-t border-gray-200 mt-4 space-y-1">
+                <a href="ciclo-usuarios.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                    <i data-lucide="users" class="w-5 h-5"></i>
+                    <span class="font-medium">Usuários</span>
+                </a>
+                <a href="ciclo-configuracoes.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-white" style="background: linear-gradient(135deg, #ff5a2e 0%, #fe8222 50%, #fd931d 100%);">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                    <span class="font-medium">Configurações</span>
+                </a>
+                <a href="#" onclick="logout()" class="flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                    <span class="font-medium">Sair</span>
+                </a>
+            </div>
+        </nav>
+    </aside>
+    
+    <main class="lg:ml-64 min-h-screen">
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-20">
+            <div class="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
+                <button id="menuBtn" class="lg:hidden p-2 rounded-lg hover:bg-gray-100">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                
+                <div class="flex-1 max-w-lg mx-4 hidden sm:block">
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"></i>
+                        <input type="text" placeholder="Buscar..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                    </div>
+                </div>
+                
+                <div class="flex items-center gap-3">
+                    <button class="p-2 rounded-lg hover:bg-gray-100 relative">
+                        <i data-lucide="bell" class="w-5 h-5"></i>
+                        <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                    </button>
+                    <div class="flex items-center gap-3">
+                        <img id="userPhoto" src="" alt="Foto" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200" style="display:none;">
+                        <div id="userPhotoPlaceholder" class="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white font-bold">
+                            <span id="userInitials">?</span>
+                        </div>
+                        <div class="hidden sm:block text-right">
+                            <p class="text-sm font-medium text-gray-900" id="userName">Carregando...</p>
+                            <p class="text-xs text-gray-500" id="userRole">...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <div class="p-4 sm:p-6 lg:p-8">
+            <div class="mb-6">
+                <h1 class="text-2xl font-bold text-gray-900">Configurações do Sistema</h1>
+                <p class="text-gray-600 mt-1">Gerencie usuários e secretarias/órgãos do município</p>
+            </div>
+            
+            <!-- Tabs -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="border-b border-gray-200 flex gap-8 px-6">
+                    <button onclick="switchTab('usuarios')" id="tab-usuarios" class="py-4 tab-active">
+                        Gerenciar Usuários
+                    </button>
+                    <button onclick="switchTab('secretarias')" id="tab-secretarias" class="py-4 text-gray-600 hover:text-gray-900">
+                        Secretarias / Órgãos
+                    </button>
+                </div>
+                
+                <!-- Tab: Gerenciar Usuários -->
+                <div id="content-usuarios" class="p-6">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900">Gerenciar Usuários</h2>
+                            <p class="text-sm text-gray-600">Cadastro, edição e controle de acesso ao sistema. Perfis: Admin, Gestor e Fiscal.</p>
+                        </div>
+                        <button onclick="openModalNovoUsuario()" class="px-4 py-2 rounded-lg text-white gradient-primary hover:opacity-90 flex items-center gap-2">
+                            <i data-lucide="user-plus" class="w-5 h-5"></i>
+                            Novo usuário
+                        </button>
+                    </div>
+                    
+                    <!-- Sub-tabs -->
+                    <div class="flex gap-4 mb-4 border-b border-gray-200">
+                        <button onclick="switchUserTab('admins')" id="usertab-admins" class="px-4 py-2 text-sm font-medium tab-active">
+                            Administradores <span class="ml-1 text-xs">(<span id="count-admins">0</span>)</span>
+                        </button>
+                        <button onclick="switchUserTab('gestores')" id="usertab-gestores" class="px-4 py-2 text-sm font-medium text-gray-600">
+                            Gestores de Contratos <span class="ml-1 text-xs">(<span id="count-gestores">0</span>)</span>
+                        </button>
+                        <button onclick="switchUserTab('fiscais')" id="usertab-fiscais" class="px-4 py-2 text-sm font-medium text-gray-600">
+                            Fiscais de Contratos <span class="ml-1 text-xs">(<span id="count-fiscais">0</span>)</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Tabela de Usuários -->
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 border-y border-gray-200">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">E-mail</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Secretaria/Órgão</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Situação</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usuarios-table-body" class="divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="5" class="px-4 py-8 text-center text-gray-500">Carregando usuários...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Tab: Secretarias -->
+                <div id="content-secretarias" class="p-6" style="display:none;">
+                    <div class="flex items-center justify-between mb-6">
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-900">Secretarias / Órgãos</h2>
+                            <p class="text-sm text-gray-600">Cadastre as secretarias e órgãos do município</p>
+                        </div>
+                        <button onclick="openModalNovaSecretaria()" class="px-4 py-2 rounded-lg text-white gradient-primary hover:opacity-90 flex items-center gap-2">
+                            <i data-lucide="plus" class="w-5 h-5"></i>
+                            Nova Secretaria/Órgão
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-4 mb-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" id="search-secretaria" placeholder="Buscar por nome" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500">
+                            <select id="filter-situacao-secretaria" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500">
+                                <option value="">Todas as situações</option>
+                                <option value="Ativa">Ativa</option>
+                                <option value="Inativa">Inativa</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 border-y border-gray-200">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Nome</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Sigla</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Responsável</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Situação</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="secretarias-table-body" class="divide-y divide-gray-200">
+                                <tr>
+                                    <td colspan="5" class="px-4 py-8 text-center text-gray-500">Carregando secretarias...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- Modal: Novo Usuário -->
+    <div id="modalNovoUsuario" class="modal fixed inset-0 bg-black bg-opacity-50 z-50 items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-900">Novo Usuário</h3>
+                <button onclick="closeModalNovoUsuario()" class="p-2 hover:bg-gray-100 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="formNovoUsuario" class="p-6 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nome Completo *</label>
+                        <input type="text" name="nome" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">E-mail *</label>
+                        <input type="email" name="email" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500">
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Perfil *</label>
+                        <select name="role" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500">
+                            <option value="">Selecione...</option>
+                            <option value="admin_municipal">Administrador Municipal</option>
+                            <option value="gestor">Gestor de Contratos</option>
+                            <option value="fiscal">Fiscal de Contratos</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Secretaria/Órgão *</label>
+                        <select name="secretaria_id" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500">
+                            <option value="">Selecione...</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                    <button type="button" onclick="closeModalNovoUsuario()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 text-white gradient-primary rounded-lg hover:opacity-90">Cadastrar Usuário</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Modal: Nova Secretaria -->
+    <div id="modalNovaSecretaria" class="modal fixed inset-0 bg-black bg-opacity-50 z-50 items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between p-6 border-b border-gray-200">
+                <h3 class="text-xl font-semibold text-gray-900">Nova Secretaria/Órgão</h3>
+                <button onclick="closeModalNovaSecretaria()" class="p-2 hover:bg-gray-100 rounded-lg">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <form id="formNovaSecretaria" class="p-6 space-y-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nome da Secretaria/Órgão *</label>
+                        <input type="text" name="nome" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Sigla *</label>
+                        <input type="text" name="sigla" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Responsável</label>
+                    <input type="text" name="responsavel" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500">
+                </div>
+                <div class="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                    <button type="button" onclick="closeModalNovaSecretaria()" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</button>
+                    <button type="submit" class="px-4 py-2 text-white gradient-primary rounded-lg hover:opacity-90">Cadastrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <script>
+        lucide.createIcons();
+        
+        function loadMunicipioInfo() {
+            try {
+                const user = API.getCurrentUser();
+                if (user && user.municipio_nome) {
+                    const palavras = user.municipio_nome.split(' ').filter(p => p.length > 0);
+                    const iniciais = palavras.map(palavra => palavra[0].toUpperCase()).join('').substring(0, 2);
+                    
+                    const municipioLogoEl = document.getElementById('municipio-logo');
+                    const municipioNomeEl = document.getElementById('municipio-nome');
+                    
+                    if (municipioLogoEl) {
+                        municipioLogoEl.textContent = iniciais;
+                    }
+                    if (municipioNomeEl) {
+                        municipioNomeEl.textContent = user.municipio_nome;
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar informações do município:', error);
+            }
+        }
+        
+        function loadUserInfo() {
+            try {
+                const user = API.getCurrentUser();
+                if (user) {
+                    document.getElementById('userName').textContent = user.nome || user.email;
+                    
+                    const roleMap = {
+                        'admin_municipal': 'Administrador Municipal',
+                        'gestor': 'Gestor de Contratos',
+                        'fiscal': 'Fiscal de Contratos'
+                    };
+                    const roleText = roleMap[user.role] || user.role;
+                    const secretaria = user.secretaria_nome ? ` (${user.secretaria_sigla || user.secretaria_nome})` : '';
+                    document.getElementById('userRole').textContent = roleText + secretaria;
+                    
+                    const iniciais = user.nome ? user.nome.split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase() : '?';
+                    document.getElementById('userInitials').textContent = iniciais;
+                    
+                    if (user.foto_url) {
+                        document.getElementById('userPhoto').src = user.foto_url;
+                        document.getElementById('userPhoto').style.display = 'block';
+                        document.getElementById('userPhotoPlaceholder').style.display = 'none';
+                    }
+                    
+                    // Verificar se é admin municipal
+                    if (user.role !== 'admin_municipal') {
+                        alert('Acesso negado. Apenas Administradores Municipais podem acessar esta página.');
+                        window.location.href = 'ciclo-dashboard.html';
+                    }
+                }
+            } catch (error) {
+                console.error('Erro ao carregar informações do usuário:', error);
+            }
+        }
+        
+        loadMunicipioInfo();
+        loadUserInfo();
+        
+        const menuBtn = document.getElementById('menuBtn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        
+        menuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('sidebar-hidden');
+            overlay.classList.toggle('hidden');
+        });
+        
+        overlay.addEventListener('click', () => {
+            sidebar.classList.add('sidebar-hidden');
+            overlay.classList.add('hidden');
+        });
+        
+        function logout() {
+            API.logout();
+            window.location.href = '../index.html';
+        }
+        
+        // Tabs
+        function switchTab(tab) {
+            const tabs = ['usuarios', 'secretarias'];
+            tabs.forEach(t => {
+                document.getElementById(`tab-${t}`).classList.remove('tab-active');
+                document.getElementById(`tab-${t}`).classList.add('text-gray-600', 'hover:text-gray-900');
+                document.getElementById(`content-${t}`).style.display = 'none';
+            });
+            
+            document.getElementById(`tab-${tab}`).classList.add('tab-active');
+            document.getElementById(`tab-${tab}`).classList.remove('text-gray-600', 'hover:text-gray-900');
+            document.getElementById(`content-${tab}`).style.display = 'block';
+        }
+        
+        function switchUserTab(type) {
+            const types = ['admins', 'gestores', 'fiscais'];
+            types.forEach(t => {
+                const btn = document.getElementById(`usertab-${t}`);
+                btn.classList.remove('tab-active');
+                btn.classList.add('text-gray-600');
+            });
+            
+            const btn = document.getElementById(`usertab-${type}`);
+            btn.classList.add('tab-active');
+            btn.classList.remove('text-gray-600');
+            
+            loadUsuarios(type);
+        }
+        
+        function openModalNovoUsuario() {
+            document.getElementById('modalNovoUsuario').classList.add('active');
+            lucide.createIcons();
+        }
+        
+        function closeModalNovoUsuario() {
+            document.getElementById('modalNovoUsuario').classList.remove('active');
+        }
+        
+        function openModalNovaSecretaria() {
+            document.getElementById('modalNovaSecretaria').classList.add('active');
+            lucide.createIcons();
+        }
+        
+        function closeModalNovaSecretaria() {
+            document.getElementById('modalNovaSecretaria').classList.remove('active');
+        }
+        
+        function loadUsuarios(type) {
+            // Placeholder - implementar com API
+            const tbody = document.getElementById('usuarios-table-body');
+            tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">Nenhum usuário encontrado</td></tr>';
+        }
+        
+        function loadSecretarias() {
+            // Placeholder - implementar com API
+            const tbody = document.getElementById('secretarias-table-body');
+            tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">Nenhuma secretaria cadastrada</td></tr>';
+        }
+        
+        // Carregar dados iniciais
+        switchUserTab('admins');
+    </script>
+</body>
+</html>

@@ -30,7 +30,21 @@ const API = {
         try {
           const errorData = await response.json();
           console.log('Dados de erro do servidor:', errorData);
-          errorMessage = errorData.message || errorData.error || `Erro ${response.status}`;
+          
+          // Extrair mensagem de forma mais robusta
+          if (typeof errorData === 'string') {
+            errorMessage = errorData;
+          } else if (errorData.message) {
+            errorMessage = typeof errorData.message === 'string' 
+              ? errorData.message 
+              : JSON.stringify(errorData.message);
+          } else if (errorData.error) {
+            errorMessage = typeof errorData.error === 'string' 
+              ? errorData.error 
+              : JSON.stringify(errorData.error);
+          } else {
+            errorMessage = `Erro ${response.status}: ${response.statusText}`;
+          }
         } catch (parseError) {
           console.log('Erro ao parsear resposta de erro:', parseError);
           errorMessage = `Erro ${response.status}: ${response.statusText}`;
