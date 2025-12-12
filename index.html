@@ -2,15 +2,270 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="refresh" content="0;url=pages/admin-dashboard.html">
-    <title>Ciclo Integrado - Redirecionando...</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ciclo Integrado - Plataforma de Gestão de Contratos Municipais</title>
+    <meta name="description" content="Sistema completo para gestão e monitoramento de contratos públicos municipais. Automatize processos, garanta conformidade e otimize a administração contratual.">
     <link rel="icon" type="image/x-icon" href="/favicon.ico" />
-    <link rel="icon" type="image/png" href="assets/images/so_logo.png" />
-</head>
-<body>
-    <p>Redirecionando para o dashboard...</p>
+    <link rel="icon" type="image/svg+xml" href="assets/images/LOGO%201.svg" />
+    <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@200..700&display=swap" rel="stylesheet"/>
+    <script src="https://cdn.tailwindcss.com"></script>
     <script>
-        window.location.href = 'pages/admin-dashboard.html';
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-orange': '#ff5a2e',
+                        'brand-orange-medium': '#fe8222',
+                        'brand-orange-light': '#fd931d',
+                    },
+                    fontFamily: {
+                        'display': ['Readex Pro', 'sans-serif']
+                    }
+                }
+            }
+        }
     </script>
+    <style>
+        .gradient-brand {
+            background: linear-gradient(135deg, #ff5a2e 0%, #fe8222 50%, #fd931d 100%);
+        }
+        .hover-lift {
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .hover-lift:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 20px 40px rgba(255, 90, 46, 0.2);
+        }
+        html {
+            scroll-behavior: smooth;
+        }
+    </style>
+</head>
+<body class="font-display antialiased bg-gray-50">
+    <!-- Header -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-sm shadow-sm">
+        <nav class="max-w-7xl mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+            <div class="flex items-center gap-2 sm:gap-3">
+                <img src="assets/images/LOGO%201.svg" alt="Ciclo Integrado" class="h-8 sm:h-12">
+                <div class="flex flex-col leading-tight">
+                    <span class="text-sm sm:text-xl font-bold text-gray-900">CICLO INTEGRADO</span>
+                    <span class="text-[9px] sm:text-[11px] text-gray-600">Plataforma de Gestão de Contratos</span>
+                </div>
+            </div>
+            <a href="pages/login.html" class="px-3 py-2 sm:px-6 sm:py-2.5 bg-brand-orange text-white text-xs sm:text-base font-semibold rounded-lg hover:bg-[#e84d23] transition-all hover:shadow-lg">
+                Acessar Sistema
+            </a>
+        </nav>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="pt-24 sm:pt-32 pb-12 sm:pb-20 px-4 sm:px-6 gradient-brand text-white">
+        <div class="max-w-6xl mx-auto text-center">
+            <h1 class="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 leading-tight">
+                Gestão de Contratos Públicos<br/>Simplificada e Eficiente
+            </h1>
+            <p class="text-sm sm:text-base md:text-lg mb-6 sm:mb-10 text-white/90 max-w-3xl mx-auto px-4">
+                Controle total sobre contratos municipais com tecnologia de ponta. Automatize processos, garanta conformidade legal e otimize a administração pública.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center px-4">
+                <a href="pages/login.html" class="px-6 sm:px-8 py-3 sm:py-4 bg-white text-brand-orange font-bold rounded-lg hover:bg-gray-50 transition-all text-base sm:text-lg shadow-xl hover:shadow-2xl">
+                    Começar Agora
+                </a>
+                <a href="#funcionalidades" class="px-6 sm:px-8 py-3 sm:py-4 bg-white/10 backdrop-blur-sm text-white font-bold rounded-lg hover:bg-white/20 transition-all text-base sm:text-lg border-2 border-white/30">
+                    Conhecer Funcionalidades
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="funcionalidades" class="py-12 sm:py-20 px-4 sm:px-6 bg-white">
+        <div class="max-w-6xl mx-auto">
+            <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold text-center mb-3 sm:mb-4 text-gray-900">Funcionalidades Completas</h2>
+            <p class="text-center text-gray-600 mb-8 sm:mb-16 text-sm sm:text-base md:text-lg px-4">Tudo que você precisa para gerenciar contratos públicos de forma profissional</p>
+            
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
+                <div class="bg-gray-50 p-6 sm:p-8 rounded-2xl hover-lift border border-gray-100">
+                    <div class="w-14 h-14 gradient-brand rounded-xl flex items-center justify-center mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-900">Cadastro de Contratos</h3>
+                    <p class="text-gray-600 leading-relaxed">Registre e organize todos os contratos municipais com informações detalhadas, anexos e histórico completo de alterações.</p>
+                </div>
+
+                <div class="bg-gray-50 p-6 sm:p-8 rounded-2xl hover-lift border border-gray-100">
+                    <div class="w-14 h-14 gradient-brand rounded-xl flex items-center justify-center mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-900">Dashboard Completo</h3>
+                    <p class="text-gray-600 leading-relaxed">Visualize indicadores em tempo real, gráficos interativos e relatórios analíticos para tomada de decisão estratégica.</p>
+                </div>
+
+                <div class="bg-gray-50 p-6 sm:p-8 rounded-2xl hover-lift border border-gray-100">
+                    <div class="w-14 h-14 gradient-brand rounded-xl flex items-center justify-center mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-900">Notificações Inteligentes</h3>
+                    <p class="text-gray-600 leading-relaxed">Receba alertas automáticos sobre vencimentos, renovações e eventos importantes dos contratos.</p>
+                </div>
+
+                <div class="bg-gray-50 p-6 sm:p-8 rounded-2xl hover-lift border border-gray-100">
+                    <div class="w-14 h-14 gradient-brand rounded-xl flex items-center justify-center mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-900">Gestão de Usuários</h3>
+                    <p class="text-gray-600 leading-relaxed">Controle de permissões por município, perfis de acesso e auditoria completa de todas as ações no sistema.</p>
+                </div>
+
+                <div class="bg-gray-50 p-6 sm:p-8 rounded-2xl hover-lift border border-gray-100">
+                    <div class="w-14 h-14 gradient-brand rounded-xl flex items-center justify-center mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-900">Relatórios Avançados</h3>
+                    <p class="text-gray-600 leading-relaxed">Gere relatórios personalizados, análises financeiras e exportação de dados em diversos formatos.</p>
+                </div>
+
+                <div class="bg-gray-50 p-6 sm:p-8 rounded-2xl hover-lift border border-gray-100">
+                    <div class="w-14 h-14 gradient-brand rounded-xl flex items-center justify-center mb-6">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3 text-gray-900">Segurança e Conformidade</h3>
+                    <p class="text-gray-600 leading-relaxed">Proteção de dados conforme LGPD, backups automáticos e conformidade com legislação de contratos públicos.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefits Section -->
+    <section class="py-12 sm:py-20 px-4 sm:px-6 bg-gray-50">
+        <div class="max-w-6xl mx-auto">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8 sm:gap-16 items-center">
+                <div>
+                    <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6 text-gray-900">Por que escolher o Ciclo Integrado?</h2>
+                    <div class="space-y-4 sm:space-y-4 sm:space-y-6">
+                        <div class="flex gap-3 sm:gap-4">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 sm:w-12 sm:h-12 gradient-brand rounded-lg flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold mb-2 text-gray-900">Economia de Tempo</h3>
+                                <p class="text-gray-600">Automatize processos manuais e reduza em até 70% o tempo gasto com gestão contratual.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 sm:gap-4">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 sm:w-12 sm:h-12 gradient-brand rounded-lg flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold mb-2 text-gray-900">Conformidade Legal</h3>
+                                <p class="text-gray-600">Sistema desenvolvido seguindo toda legislação de contratos públicos e Lei de Licitações.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 sm:gap-4">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 sm:w-12 sm:h-12 gradient-brand rounded-lg flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold mb-2 text-gray-900">Transparência</h3>
+                                <p class="text-gray-600">Rastreabilidade completa de todas as ações, facilitando auditorias e prestação de contas.</p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 sm:gap-4">
+                            <div class="flex-shrink-0">
+                                <div class="w-10 h-10 sm:w-12 sm:h-12 gradient-brand rounded-lg flex items-center justify-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 sm:w-6 sm:h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-bold mb-2 text-gray-900">Suporte Especializado</h3>
+                                <p class="text-gray-600">Equipe técnica disponível para auxiliar na implantação e uso diário do sistema.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-8 rounded-2xl shadow-xl">
+                    <div class="aspect-video bg-gradient-to-br from-brand-orange-light to-brand-orange rounded-xl flex items-center justify-center">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-32 h-32 text-white/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="py-12 sm:py-20 px-4 sm:px-6 gradient-brand text-white">
+        <div class="max-w-4xl mx-auto text-center">
+            <h2 class="text-2xl sm:text-3xl md:text-4xl font-bold mb-4 sm:mb-6">Comece a transformar a gestão de contratos do seu município hoje</h2>
+            <p class="text-base sm:text-lg md:text-xl mb-6 sm:mb-10 text-white/90 px-4">Entre em contato e descubra como podemos ajudar sua prefeitura a ter mais eficiência e transparência.</p>
+            <a href="pages/login.html" class="inline-block px-6 sm:px-10 py-3 sm:py-4 bg-white text-brand-orange font-bold rounded-lg hover:bg-gray-50 transition-all text-base sm:text-lg shadow-xl hover:shadow-2xl">
+                Acessar Sistema
+            </a>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-gray-300 py-8 sm:py-12 px-4 sm:px-6">
+        <div class="max-w-6xl mx-auto">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8 sm:gap-12 mb-6 sm:mb-8">
+                <div>
+                    <div class="flex items-center gap-3 mb-4">
+                        <img src="assets/images/LOGO%201.svg" alt="Ciclo Integrado" class="h-10">
+                        <div class="flex flex-col leading-tight">
+                            <span class="text-base font-bold text-white">CICLO INTEGRADO</span>
+                            <span class="text-[10px] text-gray-400">Plataforma de Gestão de Contratos</span>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-400">Solução completa para gestão de contratos públicos municipais com tecnologia e conformidade legal.</p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white mb-4">Links Rápidos</h4>
+                    <ul class="space-y-2 text-sm">
+                        <li><a href="#funcionalidades" class="hover:text-brand-orange transition-colors">Funcionalidades</a></li>
+                        <li><a href="pages/login.html" class="hover:text-brand-orange transition-colors">Acessar Sistema</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-bold text-white mb-4">Suporte</h4>
+                    <p class="text-sm text-gray-400 mb-2">Entre em contato para mais informações sobre o sistema e planos disponíveis.</p>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 pt-8 text-center text-sm text-gray-500">
+                <p>© 2025 Ciclo Integrado. Todos os direitos reservados.</p>
+            </div>
+        </div>
+    </footer>
 </body>
 </html>
+
+

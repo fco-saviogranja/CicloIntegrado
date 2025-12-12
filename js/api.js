@@ -4,7 +4,8 @@
  */
 
 const API = {
-  baseURL: 'https://us-central1-scenic-lane-480423-t5.cloudfunctions.net/ciclo-integrado',
+  // Updated to point to the latest deployed Cloud Function (cicloIntegradoAPI)
+  baseURL: 'https://us-central1-scenic-lane-480423-t5.cloudfunctions.net/cicloIntegradoAPI',
   
   // ============================================
   // AUTENTICAÇÃO
@@ -15,18 +16,37 @@ const API = {
    */
   async login(email, password, municipio_id = null) {
     try {
+      console.log('Iniciando login para:', email);
       const response = await fetch(`${this.baseURL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, municipio_id })
       });
       
+      console.log('Resposta recebida com status:', response.status);
+      
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || 'Erro ao fazer login');
+        let errorMessage = 'Erro ao fazer login';
+        try {
+          const errorData = await response.json();
+          console.log('Dados de erro do servidor:', errorData);
+          errorMessage = errorData.message || errorData.error || `Erro ${response.status}`;
+        } catch (parseError) {
+          console.log('Erro ao parsear resposta de erro:', parseError);
+          errorMessage = `Erro ${response.status}: ${response.statusText}`;
+        }
+        throw new Error(errorMessage);
       }
       
       const data = await response.json();
+      console.log('Dados de sucesso recebidos:', { token: data.token ? 'presente' : 'ausente', user: data.user ? 'presente' : 'ausente' });
+      
+      // Verificar se a resposta tem a estrutura esperada
+      if (!data.token || !data.user) {
+        throw new Error('Resposta do servidor inválida: token ou usuário não encontrado');
+      }
+      
+      console.log('Login bem-sucedido para usuário:', data.user.email, 'com role:', data.user.role);
       
       // Salvar token e dados do usuário
       localStorage.setItem('token', data.token);
@@ -34,7 +54,7 @@ const API = {
       
       return data;
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Login error completo:', error);
       throw error;
     }
   },

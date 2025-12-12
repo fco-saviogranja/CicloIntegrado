@@ -1951,7 +1951,7 @@ app.post('/admin/users/:user_id/photo', authenticateToken, async (req, res) => {
     await userRef.update({
       photo_url: publicUrl,
       updated_at: new Date().toISOString(),
-      updated_by: req.user.email
+      updated_by: req.user?.email || null
     });
 
     if (beforeData?.photo_url && beforeData.photo_url !== publicUrl) {
@@ -1998,11 +1998,13 @@ app.post('/admin/users/:user_id/photo', authenticateToken, async (req, res) => {
       });
     }
 
+    const errorDetail = error?.message || 'Erro desconhecido';
     console.error('Erro ao atualizar foto de perfil:', error);
     res.status(500).json({
       error: {
         code: 'PHOTO_UPLOAD_ERROR',
-        message: 'Erro ao atualizar foto de perfil'
+        message: `Erro ao atualizar foto de perfil: ${errorDetail}`,
+        detail: errorDetail
       }
     });
   }

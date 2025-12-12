@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link href="https://fonts.googleapis.com" rel="preconnect"/>
     <link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-    <link href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,100..900;1,100..900&amp;display=swap" rel="stylesheet"/>
+        <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@200..700&display=swap" rel="stylesheet"/>
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
     <link href="../css/styles.css" rel="stylesheet"/>
     <script>
@@ -21,7 +21,7 @@
                         "background-dark": "#101922",
                     },
                     fontFamily: {
-                        "display": ["Public Sans", "sans-serif"]
+                            "display": ["Readex Pro", "sans-serif"]
                     },
                     borderRadius: {
                         "DEFAULT": "0.25rem",
@@ -48,20 +48,24 @@
         <div class="flex w-full max-w-full">
             <main class="flex-1 flex flex-col items-stretch justify-center">
                 <div class="grid lg:grid-cols-2 min-h-screen">
-                    <div class="relative hidden lg:flex flex-col items-center justify-center bg-background-light dark:bg-background-dark p-12">
+                    <div class="relative hidden lg:flex flex-col items-center justify-center bg-background-light dark:bg-background-dark p-6 sm:p-8 lg:p-12">
                         <div class="w-full max-w-lg text-center">
                             <div class="flex flex-col items-center gap-4">
-                                <img alt="Identidade Ciclo Integrado" class="h-40 object-contain" src="../assets/images/so_logo.png"/>
-                                <img alt="Slogan Ciclo Integrado" class="h-16 object-contain" src="../assets/images/slogan.png"/>
+                                <img alt="Identidade Ciclo Integrado" class="h-60 sm:h-80 object-contain" src="../assets/images/LOGO%201.svg"/>
+                                <div class="text-center leading-tight">
+                                    <p class="text-2xl sm:text-3xl font-bold text-gray-900 dark:text-gray-100">CICLO INTEGRADO</p>
+                                    <p class="text-sm text-gray-600 dark:text-gray-300">Plataforma de Gestao de Contratos</p>
+                                </div>
                             </div>
-                            <p class="mt-12 text-sm text-gray-500 dark:text-gray-400">Gestão de Contratos Municipais. Acesse para administrar, monitorar e otimizar os processos contratuais.</p>
+                            <p class="mt-8 sm:mt-12 text-xs sm:text-sm text-gray-500 dark:text-gray-400">Gestão de Contratos Municipais. Acesse para administrar, monitorar e otimizar os processos contratuais.</p>
                         </div>
                     </div>
-                    <div class="flex flex-col items-center justify-center p-6 sm:p-12 bg-white dark:bg-gray-900">
-                        <div class="w-full max-w-sm">
+                    <div class="flex flex-col items-center justify-center p-4 sm:p-6 lg:p-12 bg-gradient-to-br from-[#ff5a2e] via-[#fe8222] to-[#fd931d] gap-6 sm:gap-8">
+                        <img alt="Logo Ciclo Integrado" class="h-20 sm:h-28 object-contain drop-shadow-lg" src="../assets/images/LOGO%203.svg"/>
+                        <div class="w-full max-w-sm bg-white dark:bg-gray-900 rounded-2xl shadow-xl p-6 sm:p-8">
                             <div class="mb-8 text-center lg:text-left">
                                 <h1 class="text-[#111418] dark:text-gray-100 tracking-tight text-2xl font-semibold leading-tight">Login de Acesso</h1>
-                                <p class="text-gray-500 dark:text-gray-400 mt-1 text-sm">Bem-vindo(a) de volta! Insira suas credenciais.</p>
+                                <p class="text-gray-600 dark:text-gray-300 mt-1 text-sm">Bem-vindo(a) de volta! Insira suas credenciais.</p>
                             </div>
                             <form class="space-y-4">
                                 <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
@@ -140,7 +144,8 @@ document.addEventListener('DOMContentLoaded', async function() {
     const submitBtn = form.querySelector('button[type="submit"]');
     const estadoSelect = document.getElementById('estado-select');
     const municipioSelect = document.getElementById('municipio-select');
-    let municipiosCache = [];
+    let estadosCache = [];
+    const municipiosCache = new Map(); // cache por estado (id -> lista de municípios)
     
     // Toggle password visibility
     togglePasswordBtn.addEventListener('click', (e) => {
@@ -154,8 +159,8 @@ document.addEventListener('DOMContentLoaded', async function() {
         estadoSelect.innerHTML = '<option value="">Selecione um estado</option>';
         estados.forEach(estado => {
             const option = document.createElement('option');
-            option.value = estado;
-            option.textContent = estado;
+            option.value = estado.id;
+            option.textContent = `${estado.nome} (${estado.sigla})`;
             estadoSelect.appendChild(option);
         });
         estadoSelect.disabled = estados.length === 0;
@@ -166,52 +171,66 @@ document.addEventListener('DOMContentLoaded', async function() {
         municipioSelect.disabled = true;
     }
 
-    function populateMunicipiosPorEstado(estado) {
-        const filtered = municipiosCache.filter(item => item.estado === estado);
-        municipioSelect.innerHTML = '<option value="">Escolha um município</option>';
-        filtered.forEach(item => {
-            const option = document.createElement('option');
-            option.value = item.municipio_id;
-            option.textContent = item.nome;
-            municipioSelect.appendChild(option);
-        });
-        municipioSelect.disabled = filtered.length === 0;
-        if (filtered.length === 0) {
-            const message = estado ? 'Nenhum município disponível para este estado' : 'Escolha um município';
-            municipioSelect.innerHTML = `<option value="">${message}</option>`;
+    async function fetchEstadosBrasil() {
+        const res = await fetch('https://servicodados.ibge.gov.br/api/v1/localidades/estados?orderBy=nome');
+        if (!res.ok) throw new Error('Falha ao carregar estados');
+        return res.json();
+    }
+
+    async function fetchMunicipiosPorEstado(estadoId) {
+        if (municipiosCache.has(estadoId)) return municipiosCache.get(estadoId);
+        const res = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${estadoId}/municipios?orderBy=nome`);
+        if (!res.ok) throw new Error('Falha ao carregar municípios');
+        const data = await res.json();
+        municipiosCache.set(estadoId, data);
+        return data;
+    }
+
+    async function handleEstadoChange(estadoId) {
+        if (!estadoId) {
+            resetMunicipioSelect('Selecione primeiro um estado');
+            return;
+        }
+        try {
+            resetMunicipioSelect('Carregando municípios...');
+            const municipios = await fetchMunicipiosPorEstado(estadoId);
+            municipioSelect.innerHTML = '<option value="">Escolha um município</option>';
+            municipios.forEach(m => {
+                const option = document.createElement('option');
+                option.value = m.id;
+                option.textContent = m.nome;
+                municipioSelect.appendChild(option);
+            });
+            municipioSelect.disabled = municipios.length === 0;
+            if (!municipios.length) {
+                municipioSelect.innerHTML = '<option value="">Nenhum município disponível para este estado</option>';
+            }
+        } catch (error) {
+            console.error('Erro ao carregar municípios:', error);
+            resetMunicipioSelect('Não foi possível carregar os municípios');
         }
     }
 
-    async function carregarMunicipiosPublicos() {
+    async function carregarEstadosEMunicipios() {
         try {
-            resetMunicipioSelect('Carregando municípios...');
-            const response = await API.getPublicMunicipios();
-            municipiosCache = Array.isArray(response?.municipalities) ? response.municipalities : [];
-            const estados = Array.isArray(response?.states) ? response.states : Array.from(new Set(municipiosCache.map(item => item.estado).filter(Boolean))).sort();
-            populateEstados(estados);
-            if (estados.length === 0) {
-                resetMunicipioSelect('Municípios indisponíveis no momento');
-            } else {
-                resetMunicipioSelect('Selecione primeiro um estado');
-            }
+            resetMunicipioSelect('Selecione primeiro um estado');
+            const estados = await fetchEstadosBrasil();
+            estadosCache = estados;
+            populateEstados(estadosCache);
         } catch (error) {
-            console.error('Erro ao carregar municípios públicos:', error);
-            resetMunicipioSelect('Não foi possível carregar os municípios');
+            console.error('Erro ao carregar estados:', error);
+            resetMunicipioSelect('Não foi possível carregar os estados');
         }
     }
 
     if (estadoSelect) {
         estadoSelect.addEventListener('change', (event) => {
-            const estado = event.target.value;
-            if (!estado) {
-                resetMunicipioSelect('Selecione primeiro um estado');
-                return;
-            }
-            populateMunicipiosPorEstado(estado);
+            const estadoId = event.target.value;
+            handleEstadoChange(estadoId);
         });
     }
 
-    await carregarMunicipiosPublicos();
+    await carregarEstadosEMunicipios();
     
     // Handle login form submission
     form.addEventListener('submit', async (e) => {
@@ -239,8 +258,17 @@ document.addEventListener('DOMContentLoaded', async function() {
             const response = await API.login(email, password, municipioId);
             
             if (response.success) {
-                // Redirect to admin dashboard
-                window.location.href = '/pages/admin-dashboard.html';
+                // Obter dados do usuário logado
+                const user = API.getCurrentUser();
+                
+                // Redirecionar baseado no tipo de usuário
+                if (user.role === 'admin_master') {
+                    // Admin Master vai para dashboard administrativo
+                    window.location.href = 'https://ciclointegrado.online/pages/admin-dashboard.html';
+                } else {
+                    // Admins Municipais, Gestores e Fiscais vão para o sistema principal
+                    window.location.href = '/pages/dashboard.html';
+                }
             } else {
                 alert(response.message || 'Erro ao fazer login. Verifique suas credenciais.');
                 submitBtn.disabled = false;
@@ -248,7 +276,18 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         } catch (error) {
             console.error('Erro no login:', error);
-            alert('Erro ao fazer login: ' + error.message);
+            
+            // Extrair mensagem de erro corretamente
+            let errorMsg = 'Erro ao fazer login';
+            if (error.message && typeof error.message === 'string') {
+                errorMsg = error.message;
+            } else if (typeof error === 'string') {
+                errorMsg = error;
+            } else if (error.error && typeof error.error === 'string') {
+                errorMsg = error.error;
+            }
+            
+            alert(errorMsg);
             submitBtn.disabled = false;
             submitBtn.innerHTML = '<span class="truncate">Entrar</span>';
         }
@@ -256,33 +295,6 @@ document.addEventListener('DOMContentLoaded', async function() {
 });
 </script>
 
-
-<!-- Footer Padrão - Ciclo Integrado -->
-<footer class="w-full border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-6 py-8 mt-auto">
-    <div class="max-w-7xl mx-auto">
-        <div class="flex flex-col md:flex-row items-center justify-between gap-6">
-            <!-- Logo e Descrição -->
-            <div class="flex items-center gap-3">
-                <div class="flex flex-col items-start">
-                    <img 
-                        alt="Identidade Ciclo Integrado" 
-                        class="h-10 object-contain mb-2" 
-                        src="../assets/images/so_logo.png"
-                    />
-                    <img 
-                        alt="Slogan Ciclo Integrado" 
-                        class="h-8 object-contain" 
-                        src="../assets/images/slogan.png"
-                    />
-                </div>
-            </div>
-      <!-- Copyright -->
-      <p class="text-xs text-gray-500 dark:text-gray-400">
-        © 2025 Ciclo Integrado. Todos os direitos reservados.
-      </p>
-    </div>
-  </div>
-</footer>
 
 </body>
 </html>

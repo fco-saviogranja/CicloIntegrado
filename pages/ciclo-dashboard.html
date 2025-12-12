@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Ciclo Integrado</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts - Readex Pro -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@200;300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <!-- Recharts -->
+    <script src="https://cdn.jsdelivr.net/npm/react@18/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/recharts@2/dist/Recharts.js"></script>
+    
+    <!-- API Module -->
+    <script src="../js/api.js"></script>
+    
+    <style>
+        :root {
+            --primary: #ff5a2e;
+            --primary-medium: #fe8222;
+            --primary-light: #fd931d;
+        }
+        
+        body {
+            font-family: 'Readex Pro', sans-serif;
+        }
+        
+        .gradient-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-medium) 50%, var(--primary-light) 100%);
+        }
+        
+        .sidebar-hidden {
+            transform: translateX(-100%);
+        }
+        
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(255, 90, 46, 0.15);
+        }
+        
+        .stat-card {
+            transition: all 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Overlay para mobile -->
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden"></div>
+    
+    <!-- Sidebar -->
+    <aside id="sidebar" class="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-40 transition-transform duration-300 lg:translate-x-0 sidebar-hidden">
+        <!-- Logo -->
+        <div class="h-16 flex items-center justify-center border-b border-gray-200 px-6">
+            <svg width="160" height="40" viewBox="0 0 200 50" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#ff5a2e;stop-opacity:1" />
+                        <stop offset="50%" style="stop-color:#fe8222;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#fd931d;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <circle cx="20" cy="25" r="15" fill="url(#logoGradient)"/>
+                <circle cx="20" cy="25" r="8" fill="white"/>
+                <text x="45" y="30" font-family="Readex Pro, sans-serif" font-size="18" font-weight="600" fill="#1f2937">Ciclo Integrado</text>
+            </svg>
+        </div>
+        
+        <!-- Navigation -->
+        <nav class="p-4 space-y-1">
+            <a href="ciclo-dashboard.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-white" style="background: linear-gradient(135deg, #ff5a2e 0%, #fe8222 50%, #fd931d 100%);">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span class="font-medium">Dashboard</span>
+            </a>
+            <a href="ciclo-contratos.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="file-text" class="w-5 h-5"></i>
+                <span class="font-medium">Contratos</span>
+            </a>
+            <a href="ciclo-cadastro.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="file-plus" class="w-5 h-5"></i>
+                <span class="font-medium">Novo Contrato</span>
+            </a>
+            <a href="ciclo-relatorios.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                <span class="font-medium">Relatórios</span>
+            </a>
+            <a href="ciclo-notificacoes.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="bell" class="w-5 h-5"></i>
+                <span class="font-medium">Notificações</span>
+                <span class="ml-auto bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">5</span>
+            </a>
+            
+            <div class="pt-4 border-t border-gray-200 mt-4 space-y-1">
+                <a href="ciclo-usuarios.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                    <i data-lucide="users" class="w-5 h-5"></i>
+                    <span class="font-medium">Usuários</span>
+                </a>
+                <a href="ciclo-configuracoes.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                    <span class="font-medium">Configurações</span>
+                </a>
+                <a href="#" onclick="logout()" class="flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                    <span class="font-medium">Sair</span>
+                </a>
+            </div>
+        </nav>
+    </aside>
+    
+    <!-- Main Content -->
+    <main class="lg:ml-64 min-h-screen">
+        <!-- Header -->
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-20">
+            <div class="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
+                <!-- Mobile Menu Button -->
+                <button id="menuBtn" class="lg:hidden p-2 rounded-lg hover:bg-gray-100">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                
+                <!-- Search -->
+                <div class="flex-1 max-w-lg mx-4 hidden sm:block">
+                    <div class="relative">
+                        <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400"></i>
+                        <input type="text" placeholder="Buscar contratos..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                    </div>
+                </div>
+                
+                <!-- User Menu -->
+                <div class="flex items-center gap-3">
+                    <button class="p-2 rounded-lg hover:bg-gray-100 relative">
+                        <i data-lucide="bell" class="w-5 h-5"></i>
+                        <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                    </button>
+                    <div class="flex items-center gap-3">
+                        <div class="hidden sm:block text-right">
+                            <p class="text-sm font-medium text-gray-900" id="userName">Carregando...</p>
+                            <p class="text-xs text-gray-500" id="userRole">...</p>
+                        </div>
+                        <div class="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white font-bold">
+                            <span id="userInitials">?</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+        
+        <!-- Dashboard Content -->
+        <div class="p-4 sm:p-6 lg:p-8 space-y-6">
+            <!-- Welcome Section -->
+            <div class="animate-fade-in">
+                <h1 class="text-2xl sm:text-3xl font-bold text-gray-900">Bem-vindo ao Ciclo Integrado</h1>
+                <p class="text-gray-600 mt-1">Visão geral dos seus contratos e atividades</p>
+            </div>
+            
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
+                <!-- Total Contratos -->
+                <div class="stat-card bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-lg gradient-primary flex items-center justify-center">
+                            <i data-lucide="file-text" class="w-6 h-6 text-white"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">+12%</span>
+                    </div>
+                    <h3 class="text-gray-600 text-sm font-medium mb-1">Total de Contratos</h3>
+                    <p class="text-3xl font-bold text-gray-900">156</p>
+                </div>
+                
+                <!-- Contratos Ativos -->
+                <div class="stat-card bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-lg bg-green-500 flex items-center justify-center">
+                            <i data-lucide="check-circle" class="w-6 h-6 text-white"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-green-600 bg-green-50 px-2 py-1 rounded-full">+8%</span>
+                    </div>
+                    <h3 class="text-gray-600 text-sm font-medium mb-1">Contratos Ativos</h3>
+                    <p class="text-3xl font-bold text-gray-900">124</p>
+                </div>
+                
+                <!-- Vencendo em 30 dias -->
+                <div class="stat-card bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-lg bg-yellow-500 flex items-center justify-center">
+                            <i data-lucide="alert-triangle" class="w-6 h-6 text-white"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-yellow-600 bg-yellow-50 px-2 py-1 rounded-full">Atenção</span>
+                    </div>
+                    <h3 class="text-gray-600 text-sm font-medium mb-1">Vencendo em 30 dias</h3>
+                    <p class="text-3xl font-bold text-gray-900">18</p>
+                </div>
+                
+                <!-- Valor Total -->
+                <div class="stat-card bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                    <div class="flex items-center justify-between mb-4">
+                        <div class="w-12 h-12 rounded-lg bg-blue-500 flex items-center justify-center">
+                            <i data-lucide="dollar-sign" class="w-6 h-6 text-white"></i>
+                        </div>
+                        <span class="text-xs font-semibold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">+15%</span>
+                    </div>
+                    <h3 class="text-gray-600 text-sm font-medium mb-1">Valor Total</h3>
+                    <p class="text-3xl font-bold text-gray-900">R$ 45,2M</p>
+                </div>
+            </div>
+            
+            <!-- Charts Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- Contratos por Status -->
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Contratos por Status</h3>
+                    <div id="statusChart" class="h-64"></div>
+                </div>
+                
+                <!-- Evolução Mensal -->
+                <div class="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+                    <h3 class="text-lg font-bold text-gray-900 mb-4">Evolução Mensal</h3>
+                    <div id="evolutionChart" class="h-64"></div>
+                </div>
+            </div>
+            
+            <!-- Recent Contracts Table -->
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                <div class="p-6 border-b border-gray-200">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-lg font-bold text-gray-900">Contratos Recentes</h3>
+                        <a href="ciclo-contratos.html" class="text-sm font-medium" style="color: var(--primary);">Ver todos →</a>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full">
+                        <thead class="bg-gray-50 border-b border-gray-200">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Número</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Objeto</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contratada</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Valor</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">001/2024</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">Serviços de Limpeza Urbana</td>
+                                <td class="px-6 py-4 text-sm text-gray-600">Clean Services Ltda</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">R$ 250.000,00</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Ativo</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <button class="text-blue-600 hover:text-blue-900 mr-3">Ver</button>
+                                    <button class="text-gray-600 hover:text-gray-900">Editar</button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">002/2024</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">Manutenção de Vias Públicas</td>
+                                <td class="px-6 py-4 text-sm text-gray-600">Construções ABC</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">R$ 180.000,00</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-yellow-100 text-yellow-800">Pendente</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <button class="text-blue-600 hover:text-blue-900 mr-3">Ver</button>
+                                    <button class="text-gray-600 hover:text-gray-900">Editar</button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-gray-50">
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">003/2024</td>
+                                <td class="px-6 py-4 text-sm text-gray-900">Fornecimento de Merenda Escolar</td>
+                                <td class="px-6 py-4 text-sm text-gray-600">Alimentos Nutritivos SA</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">R$ 320.000,00</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-green-100 text-green-800">Ativo</span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm">
+                                    <button class="text-blue-600 hover:text-blue-900 mr-3">Ver</button>
+                                    <button class="text-gray-600 hover:text-gray-900">Editar</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+        
+        // Mobile menu toggle
+        const menuBtn = document.getElementById('menuBtn');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('overlay');
+        
+        menuBtn.addEventListener('click', () => {
+            sidebar.classList.toggle('sidebar-hidden');
+            overlay.classList.toggle('hidden');
+        });
+        
+        overlay.addEventListener('click', () => {
+            sidebar.classList.add('sidebar-hidden');
+            overlay.classList.add('hidden');
+        });
+        
+        // Load user info
+        function loadUserInfo() {
+            const user = API.getCurrentUser();
+            if (user) {
+                document.getElementById('userName').textContent = user.nome || user.email;
+                document.getElementById('userRole').textContent = getRoleName(user.role);
+                
+                const initials = (user.nome || user.email)
+                    .split(' ')
+                    .map(n => n[0])
+                    .join('')
+                    .toUpperCase()
+                    .substring(0, 2);
+                document.getElementById('userInitials').textContent = initials;
+            }
+        }
+        
+        function getRoleName(role) {
+            const roles = {
+                'admin_master': 'Admin Master',
+                'admin_municipal': 'Admin Municipal',
+                'gestor_contrato': 'Gestor de Contrato',
+                'fiscal_contrato': 'Fiscal de Contrato'
+            };
+            return roles[role] || role;
+        }
+        
+        function logout() {
+            if (confirm('Deseja realmente sair?')) {
+                API.logout();
+                window.location.href = '../pages/login.html';
+            }
+        }
+        
+        // Initialize
+        loadUserInfo();
+        
+        // Render charts (simplified version)
+        function renderCharts() {
+            // Status Chart (Pie Chart)
+            const statusData = [
+                { name: 'Ativo', value: 124, color: '#10b981' },
+                { name: 'Pendente', value: 18, color: '#f59e0b' },
+                { name: 'Vencido', value: 8, color: '#ef4444' },
+                { name: 'Suspenso', value: 6, color: '#6b7280' }
+            ];
+            
+            const statusChart = document.getElementById('statusChart');
+            statusChart.innerHTML = `
+                <div class="flex items-center justify-center h-full">
+                    <div class="grid grid-cols-2 gap-4 w-full">
+                        ${statusData.map(item => `
+                            <div class="text-center p-4 rounded-lg border border-gray-200">
+                                <div class="text-3xl font-bold" style="color: ${item.color}">${item.value}</div>
+                                <div class="text-sm text-gray-600 mt-1">${item.name}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+            
+            // Evolution Chart (Bar Chart)
+            const months = ['Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+            const values = [12, 15, 18, 14, 20, 25];
+            const maxValue = Math.max(...values);
+            
+            const evolutionChart = document.getElementById('evolutionChart');
+            evolutionChart.innerHTML = `
+                <div class="flex items-end justify-between h-full gap-2 px-4">
+                    ${months.map((month, i) => `
+                        <div class="flex-1 flex flex-col items-center gap-2">
+                            <div class="w-full rounded-t-lg transition-all hover:opacity-80" 
+                                 style="height: ${(values[i] / maxValue) * 180}px; background: linear-gradient(180deg, #ff5a2e 0%, #fe8222 50%, #fd931d 100%);">
+                            </div>
+                            <div class="text-xs text-gray-600 font-medium">${month}</div>
+                            <div class="text-xs font-bold text-gray-900">${values[i]}</div>
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+        
+        renderCharts();
+    </script>
+</body>
+</html>

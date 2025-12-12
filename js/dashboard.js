@@ -17,6 +17,30 @@ if (!requireAdminMaster()) {
 let dashboardData = null;
 let municipiosData = [];
 let usuariosData = [];
+let notificationsState = {
+    items: [],
+    isOpen: false
+};
+
+// Funções auxiliares para persistência de notificações
+function loadNotificationsFromStorage() {
+    try {
+        const stored = localStorage.getItem('notifications');
+        return stored ? JSON.parse(stored) : null;
+    } catch (e) {
+        console.error('Erro ao carregar notificações:', e);
+        return null;
+    }
+}
+
+function saveNotificationsToStorage(items) {
+    try {
+        localStorage.setItem('notifications', JSON.stringify(items));
+    } catch (e) {
+        console.error('Erro ao salvar notificações:', e);
+    }
+}
+
 let filteredMunicipios = [];
 let filteredUsuarios = [];
 const municipioFilters = {
@@ -1670,8 +1694,8 @@ function updateRevenueChart(receita) {
                     <span class="text-text-secondary dark:text-gray-400">${label}</span>
                     <span class="font-medium">${formatCurrency(receitaValor)}</span>
                 </div>
-                <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                    <div class="chart-bar h-full bg-gradient-to-r from-blue-500 to-blue-600 rounded-full" style="width: ${largura}%"></div>
+                <div class="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden" style="--progress-start: ${largura}%; --progress-end: 100%;">
+                    <div class="chart-bar h-full rounded-full" style="width: ${largura}%; background: linear-gradient(90deg, #ff5a2e 0%, #fe8222 50%, #fd931d 100%);"></div>
                 </div>
             </div>
         `;
@@ -3283,10 +3307,7 @@ function openCouponModal() {
     resetCouponForm();
     populateCouponMunicipioSelect();
 
-    const modal = document.getElementById('couponModal');
-    if (modal) {
-        modal.classList.remove('hidden');
-    }
+    showModalWithAnimation('couponModal');
 
     const codeInput = document.getElementById('coupon-code');
     if (codeInput) {
@@ -3296,11 +3317,7 @@ function openCouponModal() {
 }
 
 function closeCouponModal() {
-    const modal = document.getElementById('couponModal');
-    if (modal) {
-        modal.classList.add('hidden');
-    }
-    resetCouponForm();
+    hideModalWithAnimation('couponModal', resetCouponForm);
 }
 
 function updateCouponDiscountInputs() {
@@ -4013,6 +4030,7 @@ async function updateUsuarioSubmit(event) {
         let updatedPhotoUrl = editUserPhotoState.originalUrl || '';
 
         if (editUserPhotoState.photoToUpload) {
+            // Enviar data URL completo (API valida e extrai mime/base64)
             const uploadResponse = await API.uploadUserPhoto(usuarioId, editUserPhotoState.photoToUpload);
             updatedPhotoUrl = uploadResponse?.photo_url || updatedPhotoUrl;
         } else if (editUserPhotoState.removePhoto) {
@@ -4079,58 +4097,85 @@ function deleteUsuario(id) {
 // MODAL
 // ============================================
 
+function showModalWithAnimation(modalId) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    const panel = modal.querySelector('.modal-panel');
+    if (panel) {
+        panel.classList.remove('modal-exit');
+        void panel.offsetWidth;
+        panel.classList.add('modal-enter');
+        setTimeout(() => panel.classList.remove('modal-enter'), 200);
+    }
+}
+
+function hideModalWithAnimation(modalId, afterHide) {
+    const modal = document.getElementById(modalId);
+    if (!modal) return;
+    const panel = modal.querySelector('.modal-panel');
+    if (panel) {
+        panel.classList.remove('modal-enter');
+        panel.classList.add('modal-exit');
+        setTimeout(() => {
+            panel.classList.remove('modal-exit');
+            modal.classList.add('hidden');
+            if (afterHide) afterHide();
+        }, 180);
+    } else {
+        modal.classList.add('hidden');
+        if (afterHide) afterHide();
+    }
+}
+
 function openCreateModal() {
-    document.getElementById('createModal').classList.remove('hidden');
+    showModalWithAnimation('createModal');
 }
 
 function closeCreateModal() {
-    document.getElementById('createModal').classList.add('hidden');
+    hideModalWithAnimation('createModal');
 }
 
 function openViewModal() {
-    const modal = document.getElementById('viewMunicipioModal');
-    if (modal) modal.classList.remove('hidden');
+    showModalWithAnimation('viewMunicipioModal');
 }
 
 function closeViewModal() {
-    const modal = document.getElementById('viewMunicipioModal');
-    if (modal) modal.classList.add('hidden');
+    hideModalWithAnimation('viewMunicipioModal');
 }
 
 function openEditModal() {
-    const modal = document.getElementById('editMunicipioModal');
-    if (modal) modal.classList.remove('hidden');
+    showModalWithAnimation('editMunicipioModal');
 }
 
 function closeEditModal() {
-    const modal = document.getElementById('editMunicipioModal');
-    if (modal) modal.classList.add('hidden');
-    const form = document.getElementById('editMunicipioForm');
-    if (form) {
-        form.reset();
-        delete form.dataset.municipioId;
-    }
-    municipioBeingEdited = null;
+    hideModalWithAnimation('editMunicipioModal', () => {
+        const form = document.getElementById('editMunicipioForm');
+        if (form) {
+            form.reset();
+            delete form.dataset.municipioId;
+        }
+        municipioBeingEdited = null;
+    });
 }
 
 function openDeleteModal() {
-    const modal = document.getElementById('deleteMunicipioModal');
-    if (modal) modal.classList.remove('hidden');
+    showModalWithAnimation('deleteMunicipioModal');
 }
 
 function closeDeleteModal() {
-    const modal = document.getElementById('deleteMunicipioModal');
-    if (modal) modal.classList.add('hidden');
-    const messageEl = document.getElementById('deleteMunicipioMessage');
-    if (messageEl) {
-        messageEl.textContent = 'Tem certeza que deseja excluir este município? Esta ação não pode ser desfeita.';
-    }
-    municipioPendingDelete = null;
-    const confirmBtn = document.getElementById('confirmDeleteMunicipioBtn');
-    if (confirmBtn) {
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = 'Excluir';
-    }
+    hideModalWithAnimation('deleteMunicipioModal', () => {
+        const messageEl = document.getElementById('deleteMunicipioMessage');
+        if (messageEl) {
+            messageEl.textContent = 'Tem certeza que deseja excluir este município? Esta ação não pode ser desfeita.';
+        }
+        municipioPendingDelete = null;
+        const confirmBtn = document.getElementById('confirmDeleteMunicipioBtn');
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Excluir';
+        }
+    });
 }
 
 async function confirmDeleteMunicipio() {
@@ -4168,63 +4213,60 @@ async function confirmDeleteMunicipio() {
 
 function openCreateUserModal() {
     populateUserMunicipioSelects();
-    const modal = document.getElementById('createUserModal');
-    if (modal) modal.classList.remove('hidden');
+    showModalWithAnimation('createUserModal');
     const form = document.getElementById('createUserForm');
     if (form) updateUserMunicipioVisibility(form);
 }
 
 function closeCreateUserModal() {
-    const modal = document.getElementById('createUserModal');
-    if (modal) modal.classList.add('hidden');
     const form = document.getElementById('createUserForm');
-    if (form) {
-        form.reset();
-        updateUserMunicipioVisibility(form);
-    }
+    hideModalWithAnimation('createUserModal', () => {
+        if (form) {
+            form.reset();
+            updateUserMunicipioVisibility(form);
+        }
+    });
 }
 
 function openEditUserModal() {
     populateUserMunicipioSelects();
-    const modal = document.getElementById('editUserModal');
-    if (modal) modal.classList.remove('hidden');
+    showModalWithAnimation('editUserModal');
     const form = document.getElementById('editUserForm');
     if (form) updateUserMunicipioVisibility(form);
 }
 
 function closeEditUserModal() {
-    const modal = document.getElementById('editUserModal');
-    if (modal) modal.classList.add('hidden');
     const form = document.getElementById('editUserForm');
-    if (form) {
-        form.reset();
-        delete form.dataset.usuarioId;
-        updateUserMunicipioVisibility(form);
-    }
-    usuarioBeingEdited = null;
-    resetEditUserPhotoState(null, '');
-    const auditEl = document.getElementById('edit-user-audit');
-    if (auditEl) auditEl.textContent = '';
+    hideModalWithAnimation('editUserModal', () => {
+        if (form) {
+            form.reset();
+            delete form.dataset.usuarioId;
+            updateUserMunicipioVisibility(form);
+        }
+        usuarioBeingEdited = null;
+        resetEditUserPhotoState(null, '');
+        const auditEl = document.getElementById('edit-user-audit');
+        if (auditEl) auditEl.textContent = '';
+    });
 }
 
 function openDeleteUsuarioModal() {
-    const modal = document.getElementById('deleteUsuarioModal');
-    if (modal) modal.classList.remove('hidden');
+    showModalWithAnimation('deleteUsuarioModal');
 }
 
 function closeDeleteUsuarioModal() {
-    const modal = document.getElementById('deleteUsuarioModal');
-    if (modal) modal.classList.add('hidden');
-    const messageEl = document.getElementById('deleteUsuarioMessage');
-    if (messageEl) {
-        messageEl.textContent = 'Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.';
-    }
-    usuarioPendingDelete = null;
-    const confirmBtn = document.getElementById('confirmDeleteUsuarioBtn');
-    if (confirmBtn) {
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = 'Excluir';
-    }
+    hideModalWithAnimation('deleteUsuarioModal', () => {
+        const messageEl = document.getElementById('deleteUsuarioMessage');
+        if (messageEl) {
+            messageEl.textContent = 'Tem certeza que deseja excluir este usuário? Esta ação não pode ser desfeita.';
+        }
+        usuarioPendingDelete = null;
+        const confirmBtn = document.getElementById('confirmDeleteUsuarioBtn');
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = 'Excluir';
+        }
+    });
 }
 
 function updateUserMunicipioVisibility(form) {
@@ -4352,6 +4394,167 @@ function refreshHeaderUser() {
             if (avatarIcon) avatarIcon.classList.remove('hidden');
         }
     }
+}
+
+// ============================================
+// NOTIFICAÇÕES (TOP BAR)
+// ============================================
+
+function seedNotifications() {
+    // Dados simulados; substituir por fetch futuro.
+    return [
+        {
+            id: 'n1',
+            title: 'Novo contrato publicado',
+            description: 'Contrato XPTO foi disponibilizado.',
+            time: 'Agora',
+            tone: 'info',
+            read: false
+        },
+        {
+            id: 'n2',
+            title: 'Usuário criado',
+            description: 'Maria Fernanda (Admin Municipal) foi adicionada.',
+            time: 'Há 10 min',
+            tone: 'success',
+            read: false
+        },
+        {
+            id: 'n3',
+            title: 'Licença expira em 7 dias',
+            description: 'Município de Cascavel precisa renovar o plano.',
+            time: 'Hoje',
+            tone: 'warning',
+            read: true
+        }
+    ];
+}
+
+function renderNotifications() {
+    const listEl = document.getElementById('notifications-list');
+    const emptyEl = document.getElementById('notifications-empty');
+    const badgeEl = document.getElementById('notifications-badge');
+
+    if (!listEl || !emptyEl || !badgeEl) return;
+
+    const unreadCount = notificationsState.items.filter(n => !n.read).length;
+
+    if (unreadCount > 0) {
+        badgeEl.textContent = unreadCount > 9 ? '9+' : unreadCount.toString();
+        badgeEl.classList.remove('hidden');
+    } else {
+        badgeEl.textContent = '';
+        badgeEl.classList.add('hidden');
+    }
+
+    if (!notificationsState.items.length) {
+        listEl.innerHTML = '';
+        emptyEl.classList.remove('hidden');
+        return;
+    }
+
+    emptyEl.classList.add('hidden');
+
+    const toneColors = {
+        info: 'bg-blue-500',
+        success: 'bg-green-500',
+        warning: 'bg-amber-500',
+        danger: 'bg-red-500'
+    };
+
+    listEl.innerHTML = notificationsState.items.map(notification => {
+        const dotColor = toneColors[notification.tone] || 'bg-blue-500';
+        const readClass = notification.read ? 'opacity-70' : '';
+        return `
+            <button class="w-full text-left px-4 py-3 notification-item ${readClass}" data-notification-id="${notification.id}">
+                <div class="flex items-start gap-3">
+                    <span class="notification-dot ${dotColor}"></span>
+                    <div class="flex-1">
+                        <p class="text-sm font-semibold">${notification.title}</p>
+                        <p class="text-xs text-text-secondary dark:text-gray-400 mt-0.5">${notification.description}</p>
+                        <p class="text-[11px] text-text-secondary dark:text-gray-500 mt-1">${notification.time}</p>
+                    </div>
+                </div>
+            </button>
+        `;
+    }).join('');
+}
+
+function toggleNotificationsPanel(forceState) {
+    const panel = document.getElementById('notifications-panel');
+    if (!panel) return;
+
+    const shouldOpen = typeof forceState === 'boolean' ? forceState : !notificationsState.isOpen;
+    notificationsState.isOpen = shouldOpen;
+
+    if (shouldOpen) {
+        panel.classList.remove('hidden');
+        panel.classList.remove('opacity-0');
+    } else {
+        panel.classList.add('hidden');
+    }
+}
+
+function markNotificationRead(id) {
+    notificationsState.items = notificationsState.items.map(item => item.id === id ? { ...item, read: true } : item);
+    saveNotificationsToStorage(notificationsState.items);
+    renderNotifications();
+}
+
+function markAllNotificationsRead() {
+    notificationsState.items = notificationsState.items.map(item => ({ ...item, read: true }));
+    saveNotificationsToStorage(notificationsState.items);
+    renderNotifications();
+}
+
+function setupNotifications() {
+    // Tentar carregar notificações armazenadas; se não houver, usar seed padrão
+    const stored = loadNotificationsFromStorage();
+    if (stored && stored.length > 0) {
+        notificationsState.items = stored;
+    } else {
+        notificationsState.items = seedNotifications();
+        saveNotificationsToStorage(notificationsState.items);
+    }
+    renderNotifications();
+
+    const button = document.getElementById('notifications-button');
+    const panel = document.getElementById('notifications-panel');
+    const listEl = document.getElementById('notifications-list');
+    const markAllBtn = document.getElementById('notifications-mark-all');
+
+    if (button) {
+        button.addEventListener('click', (event) => {
+            event.stopPropagation();
+            toggleNotificationsPanel();
+        });
+    }
+
+    if (markAllBtn) {
+        markAllBtn.addEventListener('click', (event) => {
+            event.stopPropagation();
+            markAllNotificationsRead();
+        });
+    }
+
+    if (listEl) {
+        listEl.addEventListener('click', (event) => {
+            const item = event.target.closest('[data-notification-id]');
+            if (!item) return;
+            const id = item.dataset.notificationId;
+            markNotificationRead(id);
+        });
+    }
+
+    document.addEventListener('click', (event) => {
+        if (!notificationsState.isOpen) return;
+        const target = event.target;
+        const isButton = target.closest && target.closest('#notifications-button');
+        const isPanel = target.closest && target.closest('#notifications-panel');
+        if (!isButton && !isPanel) {
+            toggleNotificationsPanel(false);
+        }
+    });
 }
 
 function setCurrentUserState(partialUser) {
@@ -4546,8 +4749,9 @@ function handleProfilePhotoSelection(event) {
         return;
     }
 
-    if (file.size > 4 * 1024 * 1024) {
-        showError('A imagem deve ter até 4MB.');
+    // Limit to ~3MB to avoid hitting backend 5MB JSON body cap once base64-encoded.
+    if (file.size > 3 * 1024 * 1024) {
+        showError('A imagem deve ter até 3MB.');
         event.target.value = '';
         return;
     }
@@ -4650,8 +4854,9 @@ function handleEditUserPhotoSelection(event) {
         return;
     }
 
-    if (file.size > 4 * 1024 * 1024) {
-        showError('A imagem deve ter até 4MB.');
+    // Limit to ~3MB to avoid hitting backend 5MB JSON body cap once base64-encoded.
+    if (file.size > 3 * 1024 * 1024) {
+        showError('A imagem deve ter até 3MB.');
         event.target.value = '';
         return;
     }
@@ -5105,6 +5310,8 @@ document.addEventListener('DOMContentLoaded', () => {
         profileForm.addEventListener('submit', handleProfileFormSubmit);
     }
 
+    setupNotifications();
+
     const profilePhotoUploadBtn = document.getElementById('profile-photo-upload-btn');
     const profilePhotoInput = document.getElementById('profile-photo-input');
     if (profilePhotoUploadBtn && profilePhotoInput) {
@@ -5433,10 +5640,10 @@ function renderPlanDistributionChart() {
     };
 
     const colorMap = {
-        premium: '#3b82f6',
-        profissional: '#f59e0b',
-        standard: '#10b981',
-        pending: '#6b7280'
+        premium: '#ff5a2e',       // primária
+        profissional: '#fe8222',  // médio
+        standard: '#fd931d',      // claro
+        pending: '#9ca3af'        // neutro
     };
 
     const chartData = Object.keys(planCounts).map(key => ({
@@ -5614,23 +5821,23 @@ function renderCapacityDistributionChart() {
                 color: (params) => {
                     const colors = [
                         new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: '#10b981' },
-                            { offset: 1, color: '#059669' }
+                            { offset: 0, color: '#fd931d' },
+                            { offset: 1, color: '#fe8222' }
                         ]),
                         new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: '#3b82f6' },
-                            { offset: 1, color: '#2563eb' }
+                            { offset: 0, color: '#fe8222' },
+                            { offset: 1, color: '#ff5a2e' }
                         ]),
                         new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: '#f59e0b' },
-                            { offset: 1, color: '#d97706' }
+                            { offset: 0, color: '#ff5a2e' },
+                            { offset: 1, color: '#e84d23' }
                         ]),
                         new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: '#ef4444' },
-                            { offset: 1, color: '#dc2626' }
+                            { offset: 0, color: '#fe8222' },
+                            { offset: 1, color: '#b45309' }
                         ]),
                         new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                            { offset: 0, color: '#991b1b' },
+                            { offset: 0, color: '#ff5a2e' },
                             { offset: 1, color: '#7f1d1d' }
                         ])
                     ];

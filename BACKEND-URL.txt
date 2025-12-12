@@ -5,4 +5,4 @@ URL:
 Atualizar em: js/main.js
 Linha: const API_BASE_URL = '...'
 
-Data de Deploy: 08/12/2025 19:58:03
+Data de Deploy: 10/12/2025 01:52:20

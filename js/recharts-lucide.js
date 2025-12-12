@@ -445,9 +445,9 @@ if (document.readyState === 'loading') {
 
 // Exportar para uso global
 window.Recharts = {
-    createLineChart: createRechartsLineChart,
-    createBarChart: createRechartsBarChart,
-    createPieChart: createRechartsPieChart
+    createLineChart: () => console.warn('Recharts não carregado'),
+    createBarChart: () => console.warn('Recharts não carregado'),
+    createPieChart: () => console.warn('Recharts não carregado')
 };
 
 window.LucideHelper = {

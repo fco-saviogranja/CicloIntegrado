@@ -3,9 +3,12 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: "#137fec",
-        "primary-dark": "#0d5ec0",
-        "primary-light": "#3b82f6",
+        primary: "#ff5a2e",
+        "primary-dark": "#e84d23",
+        "primary-light": "#ff7a4d",
+        "brand-orange": "#ff5a2e",
+        "brand-orange-medium": "#fe8222",
+        "brand-orange-light": "#fd931d",
         "background-light": "#f6f7f8",
         "background-dark": "#101922",
         "card-light": "#ffffff",
@@ -16,7 +19,7 @@ module.exports = {
         "text-secondary": "#64748b",
       },
       fontFamily: {
-        display: ["Public Sans", "sans-serif"],
+        display: ["Readex Pro", "sans-serif"],
       },
       borderRadius: {
         DEFAULT: "0.25rem",
