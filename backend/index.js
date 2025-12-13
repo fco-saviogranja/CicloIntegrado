@@ -1419,6 +1419,247 @@ app.put('/admin/municipalities/:municipio_id', authenticateToken, isAdminMaster,
 });
 
 /**
+ * POST /admin/municipalities/:municipio_id/logo
+ * Upload logo do município (admin master ou admin municipal do próprio município)
+ */
+app.post('/admin/municipalities/:municipio_id/logo', authenticateToken, async (req, res) => {
+  try {
+    const { municipio_id } = req.params;
+    const { image_base64 } = req.body || {};
+
+    if (!municipio_id) {
+      return res.status(400).json({
+        error: {
+          code: 'MISSING_MUNICIPIO_ID',
+          message: 'Município inválido para upload de logo'
+        }
+      });
+    }
+
+    // Verificar permissões: admin master ou admin municipal do próprio município
+    const isOwner = req.user?.role === 'admin_master';
+    const isAdminMunicipal = (req.user?.role === 'admin_municipal' || req.user?.role === 'admin_municipio') 
+      && req.user?.municipio_id === municipio_id;
+
+    if (!isOwner && !isAdminMunicipal) {
+      return res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Você não tem permissão para alterar a logo deste município'
+        }
+      });
+    }
+
+    const parsedImage = parseImageDataUrl(image_base64);
+    if (!parsedImage) {
+      return res.status(400).json({
+        error: {
+          code: 'INVALID_IMAGE',
+          message: 'Formato de imagem inválido'
+        }
+      });
+    }
+
+    const municipioRef = db.collection('municipalities').doc(municipio_id);
+    const beforeSnapshot = await municipioRef.get();
+
+    if (!beforeSnapshot.exists) {
+      return res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Município não encontrado'
+        }
+      });
+    }
+
+    const beforeData = beforeSnapshot.data();
+
+    const uniqueId = crypto.randomUUID();
+    const filePath = `municipio_logos/${municipio_id}/${uniqueId}.${parsedImage.extension}`;
+    const file = bucket.file(filePath);
+
+    await file.save(parsedImage.buffer, {
+      metadata: {
+        contentType: parsedImage.mimeType,
+        cacheControl: 'public,max-age=3600'
+      }
+    });
+
+    const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
+
+    await municipioRef.update({
+      logo_url: publicUrl,
+      updated_at: new Date().toISOString(),
+      updated_by: req.user?.email || null
+    });
+
+    // Remover logo anterior se existir
+    if (beforeData?.logo_url && beforeData.logo_url !== publicUrl) {
+      await deleteStorageFileByUrl(beforeData.logo_url);
+    }
+
+    // Atualizar usuários do município com a nova logo
+    const usersSnapshot = await db.collection('users')
+      .where('municipio_id', '==', municipio_id)
+      .get();
+
+    const batch = db.batch();
+    usersSnapshot.docs.forEach(doc => {
+      batch.update(doc.ref, { municipio_logo: publicUrl });
+    });
+    await batch.commit();
+
+    const afterSnapshot = await municipioRef.get();
+    const afterData = afterSnapshot.data();
+
+    await logAuditEvent({
+      entityType: 'municipality',
+      entityId: municipio_id,
+      action: 'update',
+      performedBy: req.user.email,
+      performedById: req.user.id,
+      performedByRole: req.user.role,
+      before: beforeData,
+      after: afterData,
+      metadata: {
+        updated_fields: ['logo_url']
+      }
+    });
+
+    res.json({
+      message: 'Logo do município atualizada com sucesso',
+      logo_url: publicUrl
+    });
+  } catch (error) {
+    if (error && error.message === 'IMAGE_TOO_LARGE') {
+      return res.status(413).json({
+        error: {
+          code: 'IMAGE_TOO_LARGE',
+          message: 'Imagem excede o limite de 4MB'
+        }
+      });
+    }
+
+    if (error && error.message === 'UNSUPPORTED_IMAGE_TYPE') {
+      return res.status(415).json({
+        error: {
+          code: 'UNSUPPORTED_IMAGE_TYPE',
+          message: 'Formato de imagem não suportado. Utilize JPG, PNG ou WEBP.'
+        }
+      });
+    }
+
+    const errorDetail = error?.message || 'Erro desconhecido';
+    console.error('Erro ao atualizar logo do município:', error);
+    res.status(500).json({
+      error: {
+        code: 'LOGO_UPLOAD_ERROR',
+        message: `Erro ao atualizar logo do município: ${errorDetail}`,
+        detail: errorDetail
+      }
+    });
+  }
+});
+
+/**
+ * DELETE /admin/municipalities/:municipio_id/logo
+ * Remover logo do município (admin master ou admin municipal do próprio município)
+ */
+app.delete('/admin/municipalities/:municipio_id/logo', authenticateToken, async (req, res) => {
+  try {
+    const { municipio_id } = req.params;
+
+    if (!municipio_id) {
+      return res.status(400).json({
+        error: {
+          code: 'MISSING_MUNICIPIO_ID',
+          message: 'Município inválido para remoção de logo'
+        }
+      });
+    }
+
+    // Verificar permissões: admin master ou admin municipal do próprio município
+    const isOwner = req.user?.role === 'admin_master';
+    const isAdminMunicipal = (req.user?.role === 'admin_municipal' || req.user?.role === 'admin_municipio') 
+      && req.user?.municipio_id === municipio_id;
+
+    if (!isOwner && !isAdminMunicipal) {
+      return res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Você não tem permissão para remover a logo deste município'
+        }
+      });
+    }
+
+    const municipioRef = db.collection('municipalities').doc(municipio_id);
+    const beforeSnapshot = await municipioRef.get();
+
+    if (!beforeSnapshot.exists) {
+      return res.status(404).json({
+        error: {
+          code: 'NOT_FOUND',
+          message: 'Município não encontrado'
+        }
+      });
+    }
+
+    const beforeData = beforeSnapshot.data();
+
+    if (beforeData?.logo_url) {
+      await deleteStorageFileByUrl(beforeData.logo_url);
+    }
+
+    await municipioRef.update({
+      logo_url: '',
+      updated_at: new Date().toISOString(),
+      updated_by: req.user.email
+    });
+
+    // Atualizar usuários do município removendo a logo
+    const usersSnapshot = await db.collection('users')
+      .where('municipio_id', '==', municipio_id)
+      .get();
+
+    const batch = db.batch();
+    usersSnapshot.docs.forEach(doc => {
+      batch.update(doc.ref, { municipio_logo: '' });
+    });
+    await batch.commit();
+
+    const afterSnapshot = await municipioRef.get();
+    const afterData = afterSnapshot.data();
+
+    await logAuditEvent({
+      entityType: 'municipality',
+      entityId: municipio_id,
+      action: 'update',
+      performedBy: req.user.email,
+      performedById: req.user.id,
+      performedByRole: req.user.role,
+      before: beforeData,
+      after: afterData,
+      metadata: {
+        updated_fields: ['logo_url']
+      }
+    });
+
+    res.json({
+      message: 'Logo do município removida com sucesso',
+      logo_url: ''
+    });
+  } catch (error) {
+    console.error('Erro ao remover logo do município:', error);
+    res.status(500).json({
+      error: {
+        code: 'LOGO_DELETE_ERROR',
+        message: 'Erro ao remover logo do município'
+      }
+    });
+  }
+});
+
+/**
  * DELETE /admin/municipalities/:municipio_id
  * Deletar município (apenas proprietário)
  */
@@ -1872,11 +2113,25 @@ app.post('/admin/users', authenticateToken, isAdminMaster, async (req, res) => {
 
 /**
  * GET /admin/users/:user_id
- * Obter detalhes de um usuário (apenas proprietário)
+ * Obter detalhes de um usuário
+ * - Admin master pode consultar qualquer usuário
+ * - Usuário comum pode consultar apenas a si mesmo
  */
-app.get('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req, res) => {
+app.get('/admin/users/:user_id', authenticateToken, async (req, res) => {
   try {
     const { user_id } = req.params;
+
+    const isOwner = req.user?.role === 'admin_master';
+    const isSelf = req.user?.id === user_id;
+    if (!isOwner && !isSelf) {
+      return res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Acesso negado. Apenas proprietário do sistema ou o próprio usuário.'
+        }
+      });
+    }
+
     const doc = await db.collection('users').doc(user_id).get();
 
     if (!doc.exists) {
@@ -1909,9 +2164,11 @@ app.get('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req, r
 
 /**
  * PUT /admin/users/:user_id
- * Atualizar usuário (apenas proprietário)
+ * Atualizar usuário
+ * - Admin master pode atualizar qualquer usuário (todos os campos permitidos)
+ * - Usuário comum pode atualizar apenas a si mesmo (nome, telefone, cpf)
  */
-app.put('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req, res) => {
+app.put('/admin/users/:user_id', authenticateToken, async (req, res) => {
   try {
     const { user_id } = req.params;
     const {
@@ -1925,6 +2182,18 @@ app.put('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req, r
       photo_url
     } = req.body;
 
+    const isOwner = req.user?.role === 'admin_master';
+    const isSelf = req.user?.id === user_id;
+
+    if (!isOwner && !isSelf) {
+      return res.status(403).json({
+        error: {
+          code: 'FORBIDDEN',
+          message: 'Acesso negado. Apenas proprietário do sistema ou o próprio usuário.'
+        }
+      });
+    }
+
     const docRef = db.collection('users').doc(user_id);
     const beforeSnapshot = await docRef.get();
     const beforeData = beforeSnapshot.exists ? beforeSnapshot.data() : null;
@@ -1933,49 +2202,40 @@ app.put('/admin/users/:user_id', authenticateToken, isAdminMaster, async (req, r
     const validRoles = ['admin_master', 'admin_municipio', 'gestor_contrato', 'fiscal_contrato'];
     const statusNormalized = typeof status === 'string' ? status.toLowerCase() : undefined;
 
-    if (Object.prototype.hasOwnProperty.call(req.body, 'name')) {
-      updateData.name = name || '';
-    }
-
-    if (Object.prototype.hasOwnProperty.call(req.body, 'phone')) {
-      updateData.phone = phone || '';
-    }
-
-    if (Object.prototype.hasOwnProperty.call(req.body, 'cpf')) {
-      updateData.cpf = cpf || '';
-    }
-
-    if (Object.prototype.hasOwnProperty.call(req.body, 'role')) {
-      if (!validRoles.includes(role)) {
-        return res.status(400).json({
-          error: {
-            code: 'INVALID_ROLE',
-            message: `Role inválida. Roles válidos: ${validRoles.join(', ')}`
-          }
-        });
+    // Campos permitidos a qualquer usuário em atualização própria
+    if (isOwner || isSelf) {
+      if (Object.prototype.hasOwnProperty.call(req.body, 'name')) {
+        updateData.name = name || '';
       }
-      updateData.role = role;
+      if (Object.prototype.hasOwnProperty.call(req.body, 'phone')) {
+        updateData.phone = phone || '';
+      }
+      if (Object.prototype.hasOwnProperty.call(req.body, 'cpf')) {
+        updateData.cpf = cpf || '';
+      }
     }
 
-    if (
-      Object.prototype.hasOwnProperty.call(req.body, 'municipio_id') ||
-      Object.prototype.hasOwnProperty.call(req.body, 'municipio_nome')
-    ) {
-      if (role === 'admin_master' || updateData.role === 'admin_master') {
-        updateData.municipio_id = null;
-        updateData.municipio_nome = null;
-      } else {
+    // Campos restritos somente ao proprietário
+    if (isOwner) {
+      if (Object.prototype.hasOwnProperty.call(req.body, 'role') && validRoles.includes(role)) {
+        updateData.role = role;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(req.body, 'municipio_id')) {
         updateData.municipio_id = municipio_id || null;
-        updateData.municipio_nome = municipio_nome || null;
       }
-    }
 
-    if (Object.prototype.hasOwnProperty.call(req.body, 'status')) {
-      updateData.status = statusNormalized || 'active';
-    }
+      if (Object.prototype.hasOwnProperty.call(req.body, 'municipio_nome')) {
+        updateData.municipio_nome = municipio_nome || '';
+      }
 
-    if (Object.prototype.hasOwnProperty.call(req.body, 'photo_url')) {
-      updateData.photo_url = photo_url ? photo_url.trim() : '';
+      if (Object.prototype.hasOwnProperty.call(req.body, 'status') && ['active', 'inactive', 'pending'].includes(statusNormalized)) {
+        updateData.status = statusNormalized;
+      }
+
+      if (Object.prototype.hasOwnProperty.call(req.body, 'photo_url')) {
+        updateData.photo_url = photo_url || '';
+      }
     }
 
     if (Object.keys(updateData).length === 0) {

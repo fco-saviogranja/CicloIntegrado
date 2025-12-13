@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meu Perfil - Ciclo Integrado</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="../js/config.js"></script>
+    <script src="../js/api.js"></script>
+    <style>
+        body { font-family: 'Readex Pro', sans-serif; }
+        .gradient-primary { background: linear-gradient(135deg, #ff5a2e 0%, #fe8222 50%, #fd931d 100%); }
+        @media (max-width: 1023px) { .sidebar-hidden { transform: translateX(-100%); } }
+        @media (min-width: 1024px) { #sidebar { transform: translateX(0) !important; } #overlay { display: none !important; } }
+        .sidebar-hidden { transform: translateX(-100%); }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <div id="overlay" class="fixed inset-0 bg-black bg-opacity-50 z-30 hidden lg:hidden"></div>
+
+    <aside id="sidebar" class="fixed left-0 top-0 h-full w-64 bg-white border-r border-gray-200 z-40 transition-transform duration-300 lg:translate-x-0 sidebar-hidden">
+        <div class="flex items-center justify-center border-b border-gray-200 px-4 py-3">
+            <svg width="120" height="30" viewBox="0 0 160 40" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                        <stop offset="0%" style="stop-color:#ff5a2e;stop-opacity:1" />
+                        <stop offset="50%" style="stop-color:#fe8222;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#fd931d;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <circle cx="16" cy="20" r="12" fill="url(#logoGradient)"/>
+                <circle cx="16" cy="20" r="6" fill="white"/>
+                <text x="36" y="24" font-family="Readex Pro, sans-serif" font-size="14" font-weight="600" fill="#1f2937">Ciclo Integrado</text>
+            </svg>
+        </div>
+        <div id="municipio-logo-container" class="flex flex-col items-center justify-center border-b border-gray-200 px-4 py-4 bg-gray-50">
+            <div id="municipio-logo" class="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-xl shadow-lg"></div>
+            <p id="municipio-nome" class="mt-2 text-xs font-semibold text-gray-700 text-center">Carregando...</p>
+        </div>
+        <nav class="p-4 space-y-1">
+            <a href="ciclo-dashboard.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                <span class="font-medium">Dashboard</span>
+            </a>
+            <a href="ciclo-contratos.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="file-text" class="w-5 h-5"></i>
+                <span class="font-medium">Contratos</span>
+            </a>
+            <a href="ciclo-cadastro.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="file-plus" class="w-5 h-5"></i>
+                <span class="font-medium">Novo Contrato</span>
+            </a>
+            <a href="ciclo-relatorios.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
+                <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                <span class="font-medium">Relatórios</span>
+            </a>
+            <div class="pt-4 border-t border-gray-200 mt-4 space-y-1">
+                <a id="menu-configuracoes" href="ciclo-configuracoes.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors" style="display:none;">
+                    <i data-lucide="settings" class="w-5 h-5"></i>
+                    <span class="font-medium">Configurações</span>
+                </a>
+                <a href="#" onclick="logout()" class="flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 transition-colors">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                    <span class="font-medium">Sair</span>
+                </a>
+            </div>
+        </nav>
+    </aside>
+
+    <main class="lg:ml-64 min-h-screen">
+        <header class="bg-white border-b border-gray-200 sticky top-0 z-20">
+            <div class="flex items-center justify-between px-4 sm:px-6 lg:px-8 h-16">
+                <button id="menuBtn" class="lg:hidden p-2 rounded-lg hover:bg-gray-100">
+                    <i data-lucide="menu" class="w-6 h-6"></i>
+                </button>
+                <h1 class="text-lg font-bold text-gray-900">Meu Perfil</h1>
+                <div class="flex items-center gap-3 relative">
+                    <button class="p-2 rounded-lg hover:bg-gray-100 relative">
+                        <i data-lucide="bell" class="w-5 h-5"></i>
+                        <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                    </button>
+                    <div class="relative">
+                        <button id="userMenuBtn" class="flex items-center gap-3 px-2 py-1 rounded-lg hover:bg-gray-100">
+                            <img id="userPhoto" src="" alt="Foto" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200" style="display:none;">
+                            <div id="userPhotoPlaceholder" class="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white font-bold">
+                                <span id="userInitials">?</span>
+                            </div>
+                            <div class="hidden sm:block text-left">
+                                <p class="text-sm font-medium text-gray-900" id="userName">Carregando...</p>
+                                <p class="text-xs text-gray-500" id="userRole">...</p>
+                            </div>
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-gray-500"></i>
+                        </button>
+                        <div id="userMenuDropdown" class="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg hidden z-30">
+                            <div class="px-4 py-3 border-b border-gray-100">
+                                <p class="text-sm font-semibold text-gray-900" id="dropdownUserName">Carregando...</p>
+                                <p class="text-xs text-gray-500" id="dropdownUserRole">...</p>
+                            </div>
+                            <a href="ciclo-perfil.html" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50">
+                                <i data-lucide="user" class="w-4 h-4"></i>
+                                <span>Meu Perfil</span>
+                            </a>
+                            <button onclick="logout()" class="w-full text-left flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 border-t border-gray-100">
+                                <i data-lucide="log-out" class="w-4 h-4"></i>
+                                <span>Sair do sistema</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="p-4 sm:p-6 lg:p-8 space-y-6">
+            <div id="perfil-alert" class="hidden px-4 py-3 rounded-lg border text-sm font-medium"></div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Informações Pessoais</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
+                        <input type="text" id="perfil-nome" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                        <input type="email" id="perfil-email" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500" disabled>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Telefone</label>
+                        <input type="tel" id="perfil-telefone" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Secretaria / Órgão</label>
+                        <input type="text" id="perfil-secretaria" class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-100" disabled>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Foto de Perfil</h2>
+                <div class="flex items-center gap-4">
+                    <img id="perfil-foto" src="" alt="Foto" class="w-20 h-20 rounded-full object-cover border-2 border-gray-200" style="display:none;">
+                    <div id="perfil-foto-placeholder" class="w-20 h-20 rounded-full gradient-primary flex items-center justify-center text-white font-bold text-xl">
+                        <span id="perfil-iniciais">?</span>
+                    </div>
+                    <div class="space-y-2">
+                        <input type="file" id="perfil-upload" accept="image/*" class="block text-sm text-gray-600">
+                        <p class="text-xs text-gray-500">Formatos: JPG, PNG. Máx 2MB.</p>
+                        <button id="perfil-remover-foto" type="button" class="text-xs text-red-600 font-medium hover:underline hidden">Remover foto</button>
+                    </div>
+                </div>
+            </div>
+
+            <div id="municipio-logo-section" class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hidden">
+                <h2 class="text-lg font-semibold text-gray-900 mb-4">Logo do Município</h2>
+                <p class="text-sm text-gray-600 mb-4">Personalize a logo que aparece na sidebar do sistema</p>
+                <div class="flex items-center gap-4">
+                    <div id="municipio-logo-preview-container" class="w-20 h-20 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white font-bold text-xl shadow-lg">
+                        <img id="municipio-logo-preview" src="" alt="Logo" class="w-20 h-20 rounded-full object-cover" style="display:none;">
+                        <span id="municipio-logo-preview-text">?</span>
+                    </div>
+                    <div class="space-y-2">
+                        <input type="file" id="municipio-logo-upload" accept="image/*" class="block text-sm text-gray-600">
+                        <p class="text-xs text-gray-500">Formatos: JPG, PNG. Máx 2MB. Recomendado: 200x200px</p>
+                        <button id="municipio-logo-remover" type="button" class="text-xs text-red-600 font-medium hover:underline hidden">Remover logo</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3">
+                <a href="ciclo-dashboard.html" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50">Cancelar</a>
+                <button id="perfil-salvar" class="px-4 py-2 text-white gradient-primary rounded-lg hover:opacity-90">Salvar alterações</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        const perfilState = {
+            user: null,
+            photoDataUrl: null,
+            removePhoto: false,
+            municipioLogoDataUrl: null,
+            removeMunicipioLogo: false,
+            saving: false
+        };
+
+        function showAlert(message, type = 'info') {
+            const el = document.getElementById('perfil-alert');
+            if (!el) return;
+            const styles = {
+                info: 'border-blue-200 bg-blue-50 text-blue-800',
+                success: 'border-green-200 bg-green-50 text-green-800',
+                error: 'border-red-200 bg-red-50 text-red-800'
+            };
+            el.className = `px-4 py-3 rounded-lg border text-sm font-medium ${styles[type] || styles.info}`;
+            el.textContent = message;
+        }
+
+        function clearAlert() {
+            const el = document.getElementById('perfil-alert');
+            if (!el) return;
+            el.classList.add('hidden');
+            el.textContent = '';
+        }
+
+        function toggleAlert(visible = false) {
+            const el = document.getElementById('perfil-alert');
+            if (!el) return;
+            if (visible) {
+                el.classList.remove('hidden');
+            } else {
+                el.classList.add('hidden');
+            }
+        }
+
+        function ensureAuthenticated() {
+            if (!API.isAuthenticated()) {
+                window.location.href = 'login.html';
+                return false;
+            }
+            return true;
+        }
+
+        function loadMunicipioInfo(user) {
+            const targetUser = user || API.getCurrentUser();
+            if (!targetUser) return;
+            const municipioLogoEl = document.getElementById('municipio-logo');
+            const municipioNomeEl = document.getElementById('municipio-nome');
+            const nome = targetUser.municipio_nome || targetUser.municipio || '';
+            if (nome && municipioLogoEl && municipioNomeEl) {
+                const iniciais = nome.split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase();
+                municipioLogoEl.textContent = iniciais;
+                municipioNomeEl.textContent = nome;
+            }
+        }
+
+        function mapRoleLabel(role) {
+            const roleMap = {
+                admin_municipal: 'Administrador Municipal',
+                admin_municipio: 'Administrador Municipal',
+                gestor: 'Gestor de Contratos',
+                fiscal: 'Fiscal de Contratos',
+                admin_master: 'Admin Master'
+            };
+            return roleMap[role] || role || 'Usuário';
+        }
+
+        function populateUserFields(user) {
+            const userName = user.nome || user.name || user.email || '';
+            const secretaria = user.secretaria_sigla || user.secretaria_nome || user.secretaria || '';
+            const roleFull = secretaria ? `${mapRoleLabel(user.role)} (${secretaria})` : mapRoleLabel(user.role);
+
+            const initials = (user.nome || user.name || user.email || '')
+                .split(' ')
+                .map(n => n[0])
+                .join('')
+                .substring(0, 2)
+                .toUpperCase();
+
+            const userInitialsEl = document.getElementById('userInitials');
+            const perfilInicialEl = document.getElementById('perfil-iniciais');
+            if (userInitialsEl) userInitialsEl.textContent = initials || '?';
+            if (perfilInicialEl) perfilInicialEl.textContent = initials || '?';
+
+            const userNameEl = document.getElementById('userName');
+            const userRoleEl = document.getElementById('userRole');
+            if (userNameEl) userNameEl.textContent = userName;
+            if (userRoleEl) userRoleEl.textContent = roleFull;
+
+            const dropdownNameEl = document.getElementById('dropdownUserName');
+            const dropdownRoleEl = document.getElementById('dropdownUserRole');
+            if (dropdownNameEl) dropdownNameEl.textContent = userName;
+            if (dropdownRoleEl) dropdownRoleEl.textContent = roleFull;
+
+            const fotoUrl = user.foto_url || user.photo_url || '';
+            const fotoEl = document.getElementById('perfil-foto');
+            const fotoPlaceholder = document.getElementById('perfil-foto-placeholder');
+            const headerPhotoEl = document.getElementById('userPhoto');
+            const headerPlaceholder = document.getElementById('userPhotoPlaceholder');
+            const removerBtn = document.getElementById('perfil-remover-foto');
+
+            if (fotoUrl) {
+                if (fotoEl) {
+                    fotoEl.src = fotoUrl;
+                    fotoEl.style.display = 'block';
+                }
+                if (fotoPlaceholder) fotoPlaceholder.style.display = 'none';
+                if (headerPhotoEl) {
+                    headerPhotoEl.src = fotoUrl;
+                    headerPhotoEl.style.display = 'block';
+                }
+                if (headerPlaceholder) headerPlaceholder.style.display = 'none';
+                if (removerBtn) removerBtn.classList.remove('hidden');
+            } else {
+                if (fotoEl) fotoEl.style.display = 'none';
+                if (fotoPlaceholder) fotoPlaceholder.style.display = 'flex';
+                if (headerPhotoEl) headerPhotoEl.style.display = 'none';
+                if (headerPlaceholder) headerPlaceholder.style.display = 'flex';
+                if (removerBtn) removerBtn.classList.add('hidden');
+            }
+
+            const nomeInput = document.getElementById('perfil-nome');
+            const emailInput = document.getElementById('perfil-email');
+            const telefoneInput = document.getElementById('perfil-telefone');
+            const secretariaInput = document.getElementById('perfil-secretaria');
+
+            if (nomeInput) nomeInput.value = user.nome || user.name || '';
+            if (emailInput) emailInput.value = user.email || '';
+            if (telefoneInput) telefoneInput.value = user.telefone || user.phone || '';
+            if (secretariaInput) secretariaInput.value = secretaria;
+        }
+
+        async function fetchFreshUser(currentUser) {
+            if (!currentUser || !currentUser.id) return currentUser;
+            try {
+                const response = await API.getUsuario(currentUser.id);
+                if (response && (response.usuario || response.user)) {
+                    return { ...currentUser, ...(response.usuario || response.user) };
+                }
+            } catch (error) {
+                console.warn('Não foi possível atualizar os dados do usuário:', error);
+            }
+            return currentUser;
+        }
+
+        async function initPerfil() {
+            if (!ensureAuthenticated()) return;
+            clearAlert();
+            const storedUser = API.getCurrentUser();
+            if (!storedUser) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            const storedUserId = storedUser.id || storedUser.uid || storedUser.user_id;
+            if (storedUserId && !storedUser.id) {
+                storedUser.id = storedUserId;
+            }
+            if (!storedUser.id) {
+                toggleAlert(true);
+                showAlert('Não foi possível identificar o usuário logado.', 'error');
+                return;
+            }
+
+            const menuConfigEl = document.getElementById('menu-configuracoes');
+            const isAdminMunicipal = storedUser.role === 'admin_municipal' || storedUser.role === 'admin_municipio';
+            const isAdminMaster = storedUser.role === 'admin_master';
+            if (menuConfigEl && (isAdminMunicipal || isAdminMaster)) {
+                menuConfigEl.style.display = 'flex';
+            }
+
+            // Mostrar seção de logo do município apenas para admin municipal
+            const municipioLogoSection = document.getElementById('municipio-logo-section');
+            if (municipioLogoSection && isAdminMunicipal) {
+                municipioLogoSection.classList.remove('hidden');
+                loadMunicipioLogoPreview(freshUser);
+            }
+
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('overlay');
+            const menuBtn = document.getElementById('menuBtn');
+            if (menuBtn && sidebar && overlay) {
+                menuBtn.addEventListener('click', () => {
+                    sidebar.classList.toggle('sidebar-hidden');
+                    overlay.classList.toggle('hidden');
+                });
+                overlay.addEventListener('click', () => {
+                    sidebar.classList.add('sidebar-hidden');
+                    overlay.classList.add('hidden');
+                });
+            }
+
+            const userMenuBtn = document.getElementById('userMenuBtn');
+            const userMenuDropdown = document.getElementById('userMenuDropdown');
+            if (userMenuBtn && userMenuDropdown) {
+                userMenuBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    userMenuDropdown.classList.toggle('hidden');
+                });
+                document.addEventListener('click', () => {
+                    userMenuDropdown.classList.add('hidden');
+                });
+            }
+
+            const freshUser = await fetchFreshUser(storedUser);
+            perfilState.user = freshUser;
+
+            populateUserFields(freshUser);
+            loadMunicipioInfo(freshUser);
+        }
+
+        async function salvarPerfil() {
+            if (perfilState.saving || !perfilState.user || !perfilState.user.id) return;
+            clearAlert();
+            const salvarBtn = document.getElementById('perfil-salvar');
+            if (salvarBtn) {
+                salvarBtn.disabled = true;
+                salvarBtn.textContent = 'Salvando...';
+            }
+
+            const nome = (document.getElementById('perfil-nome')?.value || '').trim();
+            const telefone = (document.getElementById('perfil-telefone')?.value || '').trim();
+
+            if (!nome) {
+                toggleAlert(true);
+                showAlert('Informe o nome completo.', 'error');
+                if (salvarBtn) {
+                    salvarBtn.disabled = false;
+                    salvarBtn.textContent = 'Salvar alterações';
+                }
+                return;
+            }
+
+            const payload = {
+                name: nome,
+                nome,
+                phone: telefone,
+                telefone
+            };
+
+            try {
+                perfilState.saving = true;
+
+                await API.updateUsuario(perfilState.user.id, payload);
+
+                let fotoUrl = perfilState.user.foto_url || perfilState.user.photo_url || '';
+
+                if (perfilState.photoDataUrl) {
+                    const uploadResponse = await API.uploadUserPhoto(perfilState.user.id, perfilState.photoDataUrl);
+                    fotoUrl = uploadResponse?.photo_url || uploadResponse?.foto_url || fotoUrl;
+                    perfilState.photoDataUrl = null;
+                    perfilState.removePhoto = false;
+                } else if (perfilState.removePhoto && fotoUrl) {
+                    await API.deleteUserPhoto(perfilState.user.id);
+                    fotoUrl = '';
+                    perfilState.removePhoto = false;
+                }
+
+                // Processar logo do município se for admin municipal
+                const isAdminMunicipal = perfilState.user.role === 'admin_municipal' || perfilState.user.role === 'admin_municipio';
+                const municipioId = perfilState.user.municipio_id;
+                
+                if (isAdminMunicipal && municipioId) {
+                    if (perfilState.municipioLogoDataUrl) {
+                        const logoResponse = await API.uploadMunicipioLogo(municipioId, perfilState.municipioLogoDataUrl);
+                        const logoUrl = logoResponse?.logo_url || '';
+                        perfilState.municipioLogoDataUrl = null;
+                        perfilState.removeMunicipioLogo = false;
+                        
+                        // Atualizar logo no usuário local
+                        perfilState.user.municipio_logo = logoUrl;
+                    } else if (perfilState.removeMunicipioLogo) {
+                        await API.deleteMunicipioLogo(municipioId);
+                        perfilState.user.municipio_logo = '';
+                        perfilState.removeMunicipioLogo = false;
+                    }
+                }
+
+                const updatedUser = {
+                    ...perfilState.user,
+                    ...payload,
+                    foto_url: fotoUrl,
+                    photo_url: fotoUrl
+                };
+
+                perfilState.user = updatedUser;
+                API.setCurrentUser(updatedUser);
+                populateUserFields(updatedUser);
+
+                toggleAlert(true);
+                showAlert('Perfil atualizado com sucesso!', 'success');
+            } catch (error) {
+                toggleAlert(true);
+                showAlert(error?.message || 'Não foi possível salvar o perfil.', 'error');
+            } finally {
+                perfilState.saving = false;
+                if (salvarBtn) {
+                    salvarBtn.disabled = false;
+                    salvarBtn.textContent = 'Salvar alterações';
+                }
+            }
+        }
+
+        function handleUpload(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) {
+                toggleAlert(true);
+                showAlert('A foto precisa ter no máximo 2MB.', 'error');
+                event.target.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                perfilState.photoDataUrl = reader.result;
+                perfilState.removePhoto = false;
+                const fotoEl = document.getElementById('perfil-foto');
+                const placeholder = document.getElementById('perfil-foto-placeholder');
+                const removerBtn = document.getElementById('perfil-remover-foto');
+                if (fotoEl) {
+                    fotoEl.src = reader.result;
+                    fotoEl.style.display = 'block';
+                }
+                if (placeholder) placeholder.style.display = 'none';
+                const headerPhotoEl = document.getElementById('userPhoto');
+                const headerPlaceholder = document.getElementById('userPhotoPlaceholder');
+                if (headerPhotoEl) {
+                    headerPhotoEl.src = reader.result;
+                    headerPhotoEl.style.display = 'block';
+                }
+                if (headerPlaceholder) headerPlaceholder.style.display = 'none';
+                if (removerBtn) removerBtn.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removerFoto() {
+            perfilState.photoDataUrl = null;
+            perfilState.removePhoto = true;
+            const uploadInput = document.getElementById('perfil-upload');
+            if (uploadInput) uploadInput.value = '';
+            const fotoEl = document.getElementById('perfil-foto');
+            const placeholder = document.getElementById('perfil-foto-placeholder');
+            const headerPhotoEl = document.getElementById('userPhoto');
+            const headerPlaceholder = document.getElementById('userPhotoPlaceholder');
+            const removerBtn = document.getElementById('perfil-remover-foto');
+            if (fotoEl) fotoEl.style.display = 'none';
+            if (placeholder) placeholder.style.display = 'flex';
+            if (headerPhotoEl) headerPhotoEl.style.display = 'none';
+            if (headerPlaceholder) headerPlaceholder.style.display = 'flex';
+            if (removerBtn) removerBtn.classList.add('hidden');
+        }
+
+        function loadMunicipioLogoPreview(user) {
+            const logoUrl = user.municipio_logo || '';
+            const municipioNome = user.municipio_nome || user.municipio || '';
+            const iniciais = municipioNome.split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase();
+            
+            const logoPreviewEl = document.getElementById('municipio-logo-preview');
+            const logoTextEl = document.getElementById('municipio-logo-preview-text');
+            const removerBtn = document.getElementById('municipio-logo-remover');
+
+            if (logoUrl && logoPreviewEl && logoTextEl) {
+                logoPreviewEl.src = logoUrl;
+                logoPreviewEl.style.display = 'block';
+                logoTextEl.style.display = 'none';
+                if (removerBtn) removerBtn.classList.remove('hidden');
+            } else if (logoTextEl) {
+                logoTextEl.textContent = iniciais || '?';
+                if (logoPreviewEl) logoPreviewEl.style.display = 'none';
+                logoTextEl.style.display = 'block';
+                if (removerBtn) removerBtn.classList.add('hidden');
+            }
+        }
+
+        function handleMunicipioLogoUpload(event) {
+            const file = event.target.files?.[0];
+            if (!file) return;
+            if (file.size > 2 * 1024 * 1024) {
+                toggleAlert(true);
+                showAlert('A logo precisa ter no máximo 2MB.', 'error');
+                event.target.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = () => {
+                perfilState.municipioLogoDataUrl = reader.result;
+                perfilState.removeMunicipioLogo = false;
+                const logoPreviewEl = document.getElementById('municipio-logo-preview');
+                const logoTextEl = document.getElementById('municipio-logo-preview-text');
+                const removerBtn = document.getElementById('municipio-logo-remover');
+                if (logoPreviewEl) {
+                    logoPreviewEl.src = reader.result;
+                    logoPreviewEl.style.display = 'block';
+                }
+                if (logoTextEl) logoTextEl.style.display = 'none';
+                if (removerBtn) removerBtn.classList.remove('hidden');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function removerMunicipioLogo() {
+            perfilState.municipioLogoDataUrl = null;
+            perfilState.removeMunicipioLogo = true;
+            const uploadInput = document.getElementById('municipio-logo-upload');
+            if (uploadInput) uploadInput.value = '';
+            const logoPreviewEl = document.getElementById('municipio-logo-preview');
+            const logoTextEl = document.getElementById('municipio-logo-preview-text');
+            const removerBtn = document.getElementById('municipio-logo-remover');
+            if (logoPreviewEl) logoPreviewEl.style.display = 'none';
+            if (logoTextEl) {
+                const user = perfilState.user || API.getCurrentUser();
+                const municipioNome = user?.municipio_nome || user?.municipio || '';
+                const iniciais = municipioNome.split(' ').map(p => p[0]).join('').substring(0, 2).toUpperCase();
+                logoTextEl.textContent = iniciais || '?';
+                logoTextEl.style.display = 'block';
+            }
+            if (removerBtn) removerBtn.classList.add('hidden');
+        }
+
+        function logout() {
+            API.logout();
+            window.location.href = '../pages/login.html';
+        }
+
+        document.getElementById('perfil-salvar')?.addEventListener('click', salvarPerfil);
+        document.getElementById('perfil-upload')?.addEventListener('change', handleUpload);
+        document.getElementById('perfil-remover-foto')?.addEventListener('click', removerFoto);
+        document.getElementById('municipio-logo-upload')?.addEventListener('change', handleMunicipioLogoUpload);
+        document.getElementById('municipio-logo-remover')?.addEventListener('click', removerMunicipioLogo);
+
+        initPerfil();
+    </script>
+</body>
+</html>
