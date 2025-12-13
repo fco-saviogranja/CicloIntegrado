@@ -282,6 +282,25 @@ const API = {
       method: 'DELETE'
     });
   },
+
+  /**
+   * Faz upload da logo do município
+   */
+  async uploadMunicipioLogo(municipioId, imageBase64) {
+    return this.request(`/admin/municipalities/${municipioId}/logo`, {
+      method: 'POST',
+      body: JSON.stringify({ image_base64: imageBase64 })
+    });
+  },
+
+  /**
+   * Remove a logo do município
+   */
+  async deleteMunicipioLogo(municipioId) {
+    return this.request(`/admin/municipalities/${municipioId}/logo`, {
+      method: 'DELETE'
+    });
+  },
   
   // ============================================
   // USUÁRIOS

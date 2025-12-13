@@ -9,6 +9,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <script src="../js/config.js"></script>
     <script src="../js/api.js"></script>
+    <script src="../js/user-header.js"></script>
     <style>
         body { font-family: 'Readex Pro', sans-serif; }
         .gradient-primary { background: linear-gradient(135deg, #ff5a2e 0%, #fe8222 50%, #fd931d 100%); }
@@ -66,16 +67,8 @@
                 <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
                 <span class="font-medium">Relatórios</span>
             </a>
-            <a href="ciclo-notificacoes.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
-                <i data-lucide="bell" class="w-5 h-5"></i>
-                <span class="font-medium">Notificações</span>
-            </a>
             
             <div class="pt-4 border-t border-gray-200 mt-4 space-y-1">
-                <a href="ciclo-usuarios.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-gray-700 hover:bg-gray-100 transition-colors">
-                    <i data-lucide="users" class="w-5 h-5"></i>
-                    <span class="font-medium">Usuários</span>
-                </a>
                 <a href="ciclo-configuracoes.html" class="flex items-center gap-3 px-4 py-3 rounded-lg text-white" style="background: linear-gradient(135deg, #ff5a2e 0%, #fe8222 50%, #fd931d 100%);">
                     <i data-lucide="settings" class="w-5 h-5"></i>
                     <span class="font-medium">Configurações</span>
@@ -107,14 +100,31 @@
                         <i data-lucide="bell" class="w-5 h-5"></i>
                         <span class="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                     </button>
-                    <div class="flex items-center gap-3">
-                        <img id="userPhoto" src="" alt="Foto" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200" style="display:none;">
-                        <div id="userPhotoPlaceholder" class="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white font-bold">
-                            <span id="userInitials">?</span>
-                        </div>
-                        <div class="hidden sm:block text-right">
-                            <p class="text-sm font-medium text-gray-900" id="userName">Carregando...</p>
-                            <p class="text-xs text-gray-500" id="userRole">...</p>
+                    <div class="relative">
+                        <button id="userMenuBtn" class="flex items-center gap-3 px-2 py-1 rounded-lg hover:bg-gray-100">
+                            <img id="userPhoto" src="" alt="Foto" class="w-10 h-10 rounded-full object-cover border-2 border-gray-200" style="display:none;">
+                            <div id="userPhotoPlaceholder" class="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-white font-bold">
+                                <span id="userInitials">?</span>
+                            </div>
+                            <div class="hidden sm:block text-left">
+                                <p class="text-sm font-medium text-gray-900" id="userName">Carregando...</p>
+                                <p class="text-xs text-gray-500" id="userRole">...</p>
+                            </div>
+                            <i data-lucide="chevron-down" class="w-4 h-4 text-gray-500"></i>
+                        </button>
+                        <div id="userMenuDropdown" class="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-xl shadow-lg hidden z-30">
+                            <div class="px-4 py-3 border-b border-gray-100">
+                                <p class="text-sm font-semibold text-gray-900" id="dropdownUserName">Carregando...</p>
+                                <p class="text-xs text-gray-500" id="dropdownUserRole">...</p>
+                            </div>
+                            <a href="ciclo-perfil.html" class="flex items-center gap-3 px-4 py-3 text-sm text-gray-700 hover:bg-gray-50">
+                                <i data-lucide="user" class="w-4 h-4"></i>
+                                <span>Meu Perfil</span>
+                            </a>
+                            <button onclick="logout()" class="w-full text-left flex items-center gap-3 px-4 py-3 text-sm text-red-600 hover:bg-red-50 border-t border-gray-100">
+                                <i data-lucide="log-out" class="w-4 h-4"></i>
+                                <span>Sair do sistema</span>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -149,6 +159,71 @@
                             <i data-lucide="user-plus" class="w-5 h-5"></i>
                             Novo usuário
                         </button>
+                    </div>
+
+                    <!-- Cards de contagem -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                        <div class="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
+                            <div class="w-12 h-12 rounded-lg flex items-center justify-center" style="background: linear-gradient(135deg, #ff5a2e 0%, #fe8222 100%);">
+                                <i data-lucide="users" class="w-6 h-6 text-white"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Total de Usuários</p>
+                                <p class="text-2xl font-bold text-gray-900" id="count-total">0</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
+                            <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-blue-500">
+                                <i data-lucide="briefcase" class="w-6 h-6 text-white"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Gestores</p>
+                                <p class="text-2xl font-bold text-gray-900" id="count-gestores">0</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
+                            <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-green-500">
+                                <i data-lucide="shield" class="w-6 h-6 text-white"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Fiscais</p>
+                                <p class="text-2xl font-bold text-gray-900" id="count-fiscais">0</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3 bg-white border border-gray-200 rounded-xl px-4 py-3 shadow-sm">
+                            <div class="w-12 h-12 rounded-lg flex items-center justify-center bg-purple-500">
+                                <i data-lucide="crown" class="w-6 h-6 text-white"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-600">Administradores</p>
+                                <p class="text-2xl font-bold text-gray-900" id="count-admins">0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filtros -->
+                    <div class="flex flex-col lg:flex-row gap-4 mb-4">
+                        <div class="flex-1">
+                            <label class="sr-only" for="filtro-busca-usuarios">Buscar por nome ou email</label>
+                            <div class="relative">
+                                <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"></i>
+                                <input id="filtro-busca-usuarios" type="text" placeholder="Buscar por nome ou email..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-transparent">
+                            </div>
+                        </div>
+                        <div class="flex gap-3 w-full lg:w-auto">
+                            <select id="filtro-perfil-usuarios" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 w-full lg:w-48">
+                                <option value="">Todos os Perfis</option>
+                                <option value="admin_municipal">Admin Municipal</option>
+                                <option value="gestor">Gestor de Contratos</option>
+                                <option value="fiscal">Fiscal de Contratos</option>
+                            </select>
+                            <select id="filtro-status-usuarios" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 w-full lg:w-48">
+                                <option value="">Todos os Status</option>
+                                <option value="ativo">Ativo</option>
+                                <option value="inativo">Inativo</option>
+                                <option value="pendente">Pendente</option>
+                            </select>
+                        </div>
                     </div>
                     
                     <!-- Sub-tabs -->
@@ -359,9 +434,13 @@
                     }
                     
                     // Verificar se é admin municipal
-                    if (user.role !== 'admin_municipal') {
+                    console.log('Role do usuário na página de configurações:', user.role);
+                    const isAdminMunicipal = user.role === 'admin_municipal' || user.role === 'admin_municipio';
+                    const isAdminMaster = user.role === 'admin_master';
+                    if (!isAdminMunicipal && !isAdminMaster) {
                         alert('Acesso negado. Apenas Administradores Municipais podem acessar esta página.');
                         window.location.href = 'ciclo-dashboard.html';
+                        return;
                     }
                 }
             } catch (error) {
@@ -420,6 +499,17 @@
             loadUsuarios(type);
         }
         
+        function updateUserCounters(counters = {}) {
+            const totalEl = document.getElementById('count-total');
+            const gestoresEl = document.getElementById('count-gestores');
+            const fiscaisEl = document.getElementById('count-fiscais');
+            const adminsEl = document.getElementById('count-admins');
+            if (totalEl) totalEl.textContent = counters.total ?? 0;
+            if (gestoresEl) gestoresEl.textContent = counters.gestores ?? 0;
+            if (fiscaisEl) fiscaisEl.textContent = counters.fiscais ?? 0;
+            if (adminsEl) adminsEl.textContent = counters.admins ?? 0;
+        }
+
         function openModalNovoUsuario() {
             document.getElementById('modalNovoUsuario').classList.add('active');
             lucide.createIcons();
@@ -442,6 +532,14 @@
             // Placeholder - implementar com API
             const tbody = document.getElementById('usuarios-table-body');
             tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">Nenhum usuário encontrado</td></tr>';
+
+            // Atualizar contadores (placeholder)
+            updateUserCounters({
+                total: 0,
+                gestores: 0,
+                fiscais: 0,
+                admins: 0
+            });
         }
         
         function loadSecretarias() {
