@@ -207,6 +207,56 @@ PUT /notificacoes/{id}/lido
 Response: 200 OK
 ```
 
+### Chat Agent (Assistente AI)
+
+> 📖 **Documentação completa**: [CHAT-AGENT-LIMITS.md](CHAT-AGENT-LIMITS.md)
+
+#### Enviar Mensagem ao Agent
+```
+POST /api/chat
+Content-Type: application/json
+Authorization: Bearer {token}
+
+{
+  "message": "Como cadastrar um novo contrato?",
+  "context": "cadastro"
+}
+
+Response:
+{
+  "resposta": "Para cadastrar um novo contrato, acesse...",
+  "tokens_usados": 45,
+  "limite_restante": 99955,
+  "timestamp": "2025-12-08T10:30:00Z"
+}
+```
+
+#### Verificar Uso de Tokens
+```
+GET /api/chat/usage
+Authorization: Bearer {token}
+
+Response:
+{
+  "plano": "profissional",
+  "limite_mensal": 500000,
+  "tokens_usados": 12450,
+  "tokens_restantes": 487550,
+  "percentual_usado": "2.49%"
+}
+```
+
+**Rate Limiting para Chat Agent:**
+- 10 requisições por minuto por usuário
+- Limites mensais de tokens por plano:
+  - Básico: 100.000 tokens
+  - Profissional: 500.000 tokens
+  - Enterprise: 2.000.000 tokens
+
+**Códigos de Erro Específicos:**
+- `429` - Limite de requisições ou tokens excedido
+- `400` - Mensagem vazia ou muito longa (max 1000 caracteres)
+
 ### Relatórios
 
 #### Gerar Relatório
